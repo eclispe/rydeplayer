@@ -1,0 +1,22 @@
+---
+name: SAMPLE HANDSET
+driver: nec
+buttons:
+    POWER:  0x4d
+    UP:     0x05
+    DOWN:   0x02
+    LEFT:   0x0a
+    RIGHT:  0x1e
+    SELECT: 0x40
+    BACK:   0x1c
+    MENU:   0x4c
+    ZERO:   0x12
+    ONE:    0x09
+    TWO:    0x1d
+    THREE:  0x1f
+    FOUR:   0x0d
+    FIVE:   0x19
+    SIX:    0x1b
+    SEVEN:  0x11
+    EIGHT:  0x15
+    NINE:   0x17
