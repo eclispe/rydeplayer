@@ -17,6 +17,7 @@ Install Longmynd. Currently recommending that you use this fork as it has fixes 
 ## Config Files
 A complete sample YAML config file is provided as `config.sample.yaml`, this contains all currently configurable options. If some options are omitted from the config file then internal defaults will be used.
 ### Config file options
+* ```configRev``` The config format revision of this file, if present but wrong the file will not load, if missing file will load with warning. Current revision is 1
 * ```longmynd``` This section defines the paths for your Longmynd installation
   * ```binpath``` path to the Longmynd binary.
   * ```mediapath``` path to Longmynd's media FIFO, this will be auto-created if it doesn't exist.

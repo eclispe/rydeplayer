@@ -1,4 +1,5 @@
 ---
+configRev: 1
 longmynd:
     binpath: /home/pi/longmynd/longmynd
     mediapath: /home/pi/lmmedia
