@@ -17,6 +17,7 @@ Install Longmynd. Currently recommending that you use this fork as it has fixes 
 ## Config Files
 A complete sample YAML config file is provided as `config.sample.yaml`, this contains all currently configurable options. If some options are omitted from the config file then internal defaults will be used.
 ### Config file options
+* ```configRev``` The config format revision of this file, if present but wrong the file will not load, if missing file will load with warning. Current revision is 1
 * ```longmynd``` This section defines the paths for your Longmynd installation
   * ```binpath``` path to the Longmynd binary.
   * ```mediapath``` path to Longmynd's media FIFO, this will be auto-created if it doesn't exist.
@@ -25,22 +26,33 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * ```repeatFirst``` The time to wait before beginning to repeat an IR events in ms.
   * ```repeatDelay``` The time between repeats once repeating has begun in ms.
   * ```repeatReset``` How long to wait with no IR signals before requiring repeatFirst again in ms.
-  * ```handsets``` A list of handset definitions, see the Handset Configuration section for how to setup new handsets.
+  * ```libraryPath``` Path to the directory containing the handset library files, see the Handset Configuration sestion for the library format
+  * ```handsets``` A list of handset names to load from the library
 * ```debug``` Debug options, for advanced users, do not rely on these, they may go away without notice
   * ```autoplay``` Auto play the stream on lock, should be set to True.
   * ```disableHardwareCodec``` Disable hardware decoder in VLC, recommend setting to True, uses more CPU but is more reliable at decoding.
-### Handset Configuration
-To configure a new handset you need to setup the correct driver and then add the appropriate button codes to the config file.
 
+### Handset Configuration
+To configure a handset you need to add the handset configuration file to the handset library directory and add the filename (without the `.yaml` extension) to the main config file. Currently you also need to activate the driver listed in the handset file manually using the instructions in the Manual driver activation section.
+
+#### Handset file options
+A complete example handset file is available as handset.sample.yaml
+* ```name``` The name of the new handset, this should be meaningful and unique
+* ```driver``` The name of the driver used by this handset
+* ```buttons``` A map of button names to scan codes
+
+#### Manual driver activation
 If you know which driver you need it can be enabled with ```sudo ir-keytable -p <driver name>```. Common values include rc-5, rc-6 and nec, a full list can be seen by running ```ir-keytable```. If you are unsure you can enable all drivers with ```sudo ir-keytable -p all``` although this is not recommended as a permanent solution due to the risk of code conflicts.
 
+#### New handset setup procedure
 Once you have the correct driver setup you should be able to see the IR codes when you run ```ir-keytable -t``` and press buttons on the  handset you should see something like this:
 ```
 54132.040051: lirc protocol(nec): scancode = 0x40
 54132.040074: event type EV_MSC(0x04): scancode = 0x40
 54132.040074: event type EV_SYN(0x00).
 ```
-Now press each button you wish to map on the handset and add the scancode to the config file. To access the core functionality you need to add at least the core 5 codes, `UP` or `DOWN`, `LEFT` or `RIGHT`, `SELECT`, `BACK` and `MENU` for each remote. The full list of supported codes is available in the sample config file, it is recommended that you map all codes that are supported by your handset.
+Now press each button you wish to map on the handset and add the scancode to the new handset file. To access the core functionality you need to add at least the core 5 codes, `UP` or `DOWN`, `LEFT` or `RIGHT`, `SELECT`, `BACK` and `MENU` for each remote. The full list of supported codes is available in the sample handset file, it is recommended that you map all codes that are supported by your handset.
+
 ## Run
 With both pyDispmanx and rydeplayer in the current directory or your ```PYTHONPATH``` and optionally a config.yaml in the current directory run:
 

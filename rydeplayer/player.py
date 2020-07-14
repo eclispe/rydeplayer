@@ -129,6 +129,7 @@ class rydeConfig(object):
             'autoplay': True,
             'disableHardwareCodec': True,
             })
+        self.configRev = 1
     #setter for default values
     def setAutoplay(self, newval):
         self.debug.autoplay = newval
@@ -137,6 +138,17 @@ class rydeConfig(object):
     def loadConfig(self, config):
         perfectConfig = True
         if isinstance(config, dict):
+            # parse config revision
+            if 'configRev' in config:
+                if isinstance(config['configRev'], int):
+                    if config['configRev'] != self.configRev:
+                        print("Unmatched config revision, config load aborted")
+                        return False
+                else:
+                    print("Config revision not an integer, config load aborted")
+                    return False
+            else:
+                print("WARNING: no config revision present, config load my fail")
             # parse critical longmynd paths
             if 'longmynd' in config:
                 if isinstance(config['longmynd'], dict):

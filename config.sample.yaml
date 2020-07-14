@@ -1,4 +1,5 @@
 ---
+configRev: 1
 longmynd:
     binpath: /home/pi/longmynd/longmynd
     mediapath: /home/pi/lmmedia
@@ -16,34 +17,9 @@ ir:
     repeatFirst: 200
     repeatDelay: 100
     repeatReset: 400
+    libraryPath: /home/pi/rydeplayer
     handsets:
-        - POWER:  0x4d
-          UP:     0x05
-          DOWN:   0x02
-          LEFT:   0x0a
-          RIGHT:  0x1e
-          SELECT: 0x40
-          BACK:   0x1c
-          MENU:   0x4c
-          ZERO:   0x12
-          ONE:    0x09
-          TWO:    0x1d
-          THREE:  0x1f
-          FOUR:   0x0d
-          FIVE:   0x19
-          SIX:    0x1b
-          SEVEN:  0x11
-          EIGHT:  0x15
-          NINE:   0x17
-
-        - POWER:  2572
-          UP:     2640
-          DOWN:   2641
-          LEFT:   2645
-          RIGHT:  2646
-          SELECT: 2647
-          BACK:   2600
-          MENU:   2607
+        - handset.sample
 
 debug:
     autoplay: True

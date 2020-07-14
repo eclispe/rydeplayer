@@ -14,13 +14,51 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import time, evdev, sys
+import time, evdev, sys, os, yaml
 import rydeplayer.common
+
+class irHandset(object):
+    def __init__(self, name, driver, buttons):
+        self.name = name
+        self.driver = driver
+        self.buttons = buttons
+
+    def getName(self):
+        return self.name
+
+    def getFriendlyName(self):
+        return self.friendlyName
+
+    def getDriver(self):
+        return self.driver
+
+    def getButtons(self):
+        return self.buttons
+
+    # cenerate the codemap for this handset from buttons
+    def getCodemap(self):
+        codemap={}
+        if isinstance(self.buttons, dict):
+            codesremaining = list(self.buttons.keys())
+            for thisNavEvent in rydeplayer.common.navEvent:
+                if thisNavEvent.name in self.buttons:
+                    ircode = self.buttons[thisNavEvent.name]
+                    if(isinstance(ircode, int)):
+                        codemap[ircode]=thisNavEvent
+                        codesremaining.remove(thisNavEvent.name)
+                    else:
+                        print("Bad IR code: "+str(ircode))
+            if len(codesremaining) > 0:
+                print("Unknown IR codes:")
+                print(codesremaining)
+        else:
+            print("handset buttons is not a dict")
+        return codemap
 
 class irConfig(object):
     def __init__(self, config = None):
-        self.irhandsets = [ # set defaults
-            {   #NEC
+        self.handsetLib = {
+            "mininec": irHandset("Mini NEC", "nec", {
                 "POWER":0x4d,
                 "UP":0x05,
                 "DOWN":0x02,
@@ -39,8 +77,11 @@ class irConfig(object):
                 "SEVEN":0x11,
                 "EIGHT":0x15,
                 "NINE":0x17,
-            },
-        ]
+            }),
+        }
+        self.irhandsets = ['mininec'] # list of handsets to load from library
+        self.validDrivers = ['rc-5', 'rc-5-sx', 'jvc', 'sony', 'nec', 'sanyo', 'mce_kbd', 'rc-6', 'sharp', 'xmp', 'imon'] # list of valid drivers TODO: load from system automatically
+        self.libraryPath = "/home/pi/handsets" # default handset library path
         self.repeatFirst=200 # how long to wait before starting to repeat
         self.repeatDelay=100 # while repeating how long between repeats
         self.repeatReset=400 # how long to wait with no repeats before resetting
@@ -57,6 +98,22 @@ class irConfig(object):
                 else:
                     print("IR handsets is not a list")
                     perfectConfig = False
+            if 'libraryPath' in config: # load handset file from library directory
+                if isinstance(config['libraryPath'] , str):
+                    self.libraryPath = config['libraryPath']
+                    if os.path.isdir(self.libraryPath):
+                        self.loadLibrary(self.libraryPath)
+                    else:
+                        print("Library path does not exsist")
+                else:
+                    print("library path must be a string, ignoring")
+                    perfectConfig = False
+            else:
+                print("No library path specified, checking previous/default location")
+                if os.path.isdir(self.libraryPath):
+                    self.loadLibrary(self.libraryPath)
+                else:
+                    print("Default path does not exsist")
             if 'repeatFirst' in config:
                 if isinstance(config['repeatFirst'] , int):
                     self.repeatFirst = config['repeatFirst']
@@ -80,25 +137,72 @@ class irConfig(object):
             perfectConfig = False
         return perfectConfig
 
+    # load handset library into object
+    def loadLibrary(self, libraryPath):
+        newLibrary = {}
+        print(libraryPath)
+        for filename in os.listdir(libraryPath):
+            filepath = os.path.join(libraryPath, filename)
+            handsetId, fileExt = os.path.splitext(filename)
+            if os.path.isfile(filepath) and fileExt in ['.yaml', '.yml']:
+                try:
+                    with open(filepath, 'r') as ymlhandsetfile:
+                        newHandset = self.loadHandset(yaml.load(ymlhandsetfile))
+                        if isinstance(newHandset, irHandset):
+                            newLibrary[handsetId] = newHandset
+                except IOError as e:
+                    print(e)
+        if len(newLibrary) > 0:
+            self.handsetLib = newLibrary
+        else:
+            print("New library empty, not updating")
+
+    # parse a handset definition and return a handset object
+    def loadHandset(self, handsetData):
+        if isinstance(handsetData, dict):
+            if 'buttons' in handsetData:
+                if isinstance(handsetData['buttons'], dict):
+                    if len(handsetData['buttons']) > 0:
+                        if 'name' in handsetData:
+                            if isinstance(handsetData['name'], str):
+                                if 'driver' in handsetData:
+                                    if isinstance(handsetData['driver'], str):
+                                        if handsetData['driver'] in self.validDrivers:
+                                            return irHandset(handsetData['name'], handsetData['driver'], handsetData['buttons'])
+                                        else:
+                                            print("Handset driver not recognised, skipping")
+                                    else:
+                                        print("Handset driver is not a string, skipping")
+                                else:
+                                    print("Handset driver missing, skipping")
+                            else:
+                                print("Handset name is not a string, skipping")
+                        else:
+                            print("Handset has no name, skipping")
+                    else:
+                        print("Handset button definitions are empty, skipping")
+                else:
+                    print("Handset buttons is not a dict, skipping")
+            else:
+                print("Handset has no button definitions")
+        else:
+            print("Handset file does not contain root dict, skipping")
+        return False
+
     # generate and return a the codemap from the handsets list
     def getCodemap(self):
         codemap = {}
         for irhandset in self.irhandsets:
-            if isinstance(irhandset, dict):
-                codesremaining = list(irhandset.keys())
-                for thisNavEvent in rydeplayer.common.navEvent:
-                    if thisNavEvent.name in irhandset:
-                        ircode = irhandset[thisNavEvent.name]
-                        if(isinstance(ircode, int)):
-                            codemap[ircode]=thisNavEvent
-                            codesremaining.remove(thisNavEvent.name)
-                        else:
-                            print("Bad IR code: "+str(ircode))
-                if len(codesremaining) > 0:
-                    print("Unknown IR codes:")
-                    print(codesremaining)
+            if isinstance(irhandset, str):
+                if irhandset in self.handsetLib:
+                    if isinstance(self.handsetLib[irhandset], irHandset):
+                        codemap.update(self.handsetLib[irhandset].getCodemap())
+                    else:
+                        print("handset list item is not a handset")
+                else:
+                    print("requested handset not found in library")
             else:
-                print("irhandset is not a dict")
+                print("irhandset is not a string, are you using the most recent file format?")
 
         return codemap
 
