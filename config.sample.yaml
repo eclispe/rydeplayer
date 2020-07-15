@@ -21,6 +21,21 @@ ir:
     handsets:
         - handset.sample
 
+gpio:
+    repeatFirst: 200
+    repeatDelay: 100
+    rxGood: 4
+    buttons:
+        POWER:  16
+        UP:     18
+        DOWN:   27
+        LEFT:   22
+        RIGHT:  23
+        SELECT: 24
+        BACK:   25
+        MENU:   5
+        MUTE:   6
+
 debug:
     autoplay: True
     disableHardwareCodec: True
