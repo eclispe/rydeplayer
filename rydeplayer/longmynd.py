@@ -310,7 +310,7 @@ class lmManager(object):
                     stvopen = True
                 elif(line.startswith('tuner:')):
                     tuneropen = True
-                elif(line == 'found new NIM with LNAs'):
+                elif(line in ['found new NIM with LNAs', 'found an older NIM with no LNA']):
                     lnasfound += 1
 
             if(fifosopen==2 and usbopen and stvopen and tuneropen and lnasfound==2):
