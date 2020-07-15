@@ -207,8 +207,8 @@ class irConfig(object):
         return codemap
 
 class irManager(object):
-    def __init__(self, app, config):
-        self.app = app
+    def __init__(self, eventCallback, config):
+        self.eventCallback = eventCallback
         # find all the GPIO IR devices
         inputDevices = []
         for devicePath in evdev.list_devices():
@@ -243,7 +243,7 @@ class irManager(object):
                     # first keypress of a potential sequence
                     mappedEvent = self.mapIrEvent(event.value)
                     if(mappedEvent != None):
-                        quit=self.stepSM(mappedEvent)
+                        quit=self.eventCallback(mappedEvent)
                     # start repeat seqence
                     self.lasttime = eventtime
                     self.repeatcount = 0
@@ -252,7 +252,7 @@ class irManager(object):
                     # repeating last keypress
                     mappedEvent = self.mapIrEvent(event.value)
                     if(mappedEvent != None):
-                        quit=self.stepSM(mappedEvent)
+                        quit=self.eventCallback(mappedEvent)
                     self.lasttime = eventtime
                     self.repeatcount += 1
                     self.lastcode = event.value
@@ -266,12 +266,3 @@ class irManager(object):
         if(incode in self.codemap):
             outcode = self.codemap[incode]
         return outcode
-
-    # step the state machine with a navEvent
-    def stepSM(self, code):
-        self.app.get_event(code)
-        if(self.app.done):
-            self.app.cleanup()
-            return True
-        self.app.update()
-        return False

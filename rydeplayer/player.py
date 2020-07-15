@@ -241,7 +241,7 @@ class player(object):
         self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
 
         # setup ir
-        self.irMan = ir.irManager(self.app, self.config.ir)
+        self.irMan = ir.irManager(self.stepSM, self.config.ir)
 
         # start longmynd
         self.lmMan.start()
@@ -293,6 +293,15 @@ class player(object):
                 self.vlcStop()
 #               print("parsed:"+str(vlcMedia.is_parsed()))
         print(self.vlcPlayer.get_state())
+
+    # Step the state machine with a navEvent
+    def stepSM(self, code):
+        self.app.get_event(code)
+        if(self.app.done):
+            self.app.cleanup()
+            return True
+        self.app.update()
+        return False
 
     # retrigger vlc to play, mostly exsists as its needed as a callback
     def vlcPlay(self):
