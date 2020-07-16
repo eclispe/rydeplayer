@@ -28,6 +28,11 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * ```repeatReset``` How long to wait with no IR signals before requiring repeatFirst again in ms.
   * ```libraryPath``` Path to the directory containing the handset library files, see the Handset Configuration sestion for the library format
   * ```handsets``` A list of handset names to load from the library
+* ```gpio``` This section defines the pins and other options for interacting with the Raspberry Pi GPIO.
+  * ```repeatFirst``` The time to wait before beginning to repeat an GPIO button press event in ms.
+  * ```repeatDelay``` The time between repeats once repeating has begun in ms.
+  * ```rxGood``` The BCM pin number to output the reciver locked indication to. For example to output the signal on pin 7 set this to 4.
+  * ```buttons``` A map of button names to BCM pin numbers.
 * ```debug``` Debug options, for advanced users, do not rely on these, they may go away without notice
   * ```autoplay``` Auto play the stream on lock, should be set to True.
   * ```disableHardwareCodec``` Disable hardware decoder in VLC, recommend setting to True, uses more CPU but is more reliable at decoding.

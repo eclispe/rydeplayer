@@ -17,6 +17,7 @@
 import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib
 from . import longmynd
 from . import ir
+import rydeplayer.gpio
 import rydeplayer.common
 import rydeplayer.states.gui
 import rydeplayer.states.playback
@@ -118,6 +119,7 @@ class Home(rydeplayer.states.gui.States):
 class rydeConfig(object):
     def __init__(self):
         self.ir = ir.irConfig()
+        self.gpio = rydeplayer.gpio.gpioConfig()
         self.tuner = longmynd.tunerConfig()
         #important longmynd path defaults
         self.longmynd = type('lmConfig', (object,), {
@@ -180,6 +182,9 @@ class rydeConfig(object):
             # pass ir config to be parsed by the ir config container
             if 'ir' in config:
                 perfectConfig = perfectConfig and self.ir.loadConfig(config['ir'])
+            # pass the gpio config to be parsed by the gpio config container
+            if 'gpio' in config:
+                perfectConfig = perfectConfig and self.gpio.loadConfig(config['gpio'])
             # parse debug options
             if 'debug' in config:
                 if isinstance(config['debug'], dict):
@@ -241,7 +246,10 @@ class player(object):
         self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
 
         # setup ir
-        self.irMan = ir.irManager(self.app, self.config.ir)
+        self.irMan = ir.irManager(self.stepSM, self.config.ir)
+
+        # setup gpio
+        self.gpioMan = rydeplayer.gpio.gpioManager(self.stepSM, self.config.gpio)
 
         # start longmynd
         self.lmMan.start()
@@ -253,7 +261,7 @@ class player(object):
         # main event loop
         while not quit:
             # need to regen every loop, lm stdout handler changes on lm restart
-            fds = self.irMan.getFDs() + self.lmMan.getFDs()
+            fds = self.irMan.getFDs() + self.lmMan.getFDs() + self.gpioMan.getFDs()
             r, w, x = select.select(fds, [], [])
             for fd in r:
                 quit = self.handleEvent(fd)
@@ -268,6 +276,8 @@ class player(object):
             quit = self.irMan.handleFD(fd)
         elif(fd in self.lmMan.getFDs()):
             self.lmMan.handleFD(fd)
+        elif(fd in self.gpioMan.getFDs()):
+            self.gpioMan.handleFD(fd)
         return quit
 
     def updateState(self):
@@ -283,16 +293,28 @@ class player(object):
                     print("Param Restart")
                 if self.vlcPlayer.get_state() not in [vlc.State.Playing, vlc.State.Opening] and self.config.debug.autoplay:
                     self.vlcPlay()
+                self.gpioMan.setRXgood(True)
             else:
                 self.playbackState.setState(rydeplayer.states.playback.States.NOLOCK)
                 if self.config.debug.autoplay:
                     self.vlcStop()
+                self.gpioMan.setRXgood(False)
         else:
             self.playbackState.setState(rydeplayer.states.playback.States.NOLONGMYND)
             if self.config.debug.autoplay:
                 self.vlcStop()
 #               print("parsed:"+str(vlcMedia.is_parsed()))
+            self.gpioMan.setRXgood(False)
         print(self.vlcPlayer.get_state())
+
+    # Step the state machine with a navEvent
+    def stepSM(self, code):
+        self.app.get_event(code)
+        if(self.app.done):
+            self.app.cleanup()
+            return True
+        self.app.update()
+        return False
 
     # retrigger vlc to play, mostly exsists as its needed as a callback
     def vlcPlay(self):
