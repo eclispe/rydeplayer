@@ -182,6 +182,9 @@ class lmManager(object):
         self.pidCacheFault = False
         self.pidCache = {}
         self.pidCachePair = (None,None)
+        # for tracking LNA initialisation errors
+        self.lnaIniting = False
+        self.lnaErrorCount = 0
         self.lastState = { 'state':None, 'provider': '', 'service': '', 'modcode': None, 'pids': {} }
         self.changeRefState = copy.deepcopy(self.lastState)
         self.stateMonotonic = 0
@@ -293,9 +296,27 @@ class lmManager(object):
         self.lmlog.append(newline)
         if(newline.startswith("ERROR:")):
             # its probably crashed, stop and output
-            self.stop(True, True)
+            # some errors are't critical while lna are initalising, might just be an old NIM
+            if(self.lnaIniting and newline.startswith("ERROR: i2c read reg8")):
+                self.lnaErrorCount += 1
+            elif(not (self.lnaIniting and newline.startswith("ERROR: lna read"))):
+                self.stop(True, True)
+        if(newline.lstrip().startswith("Flow:")):
+            flowline = (newline.lstrip()[6:])
+            if(flowline.startswith("LNA init")):
+                # start tracking LNA initalisation errors
+                self.lnaIniting = True
+                self.lnaErrorCount = 0
         if(newline.lstrip().startswith("Status:")):
-            self.statelog.append(newline.lstrip()[8:])
+            lnaLines = ['found new NIM with LNAs', 'found an older NIM with no LNA']
+            statusline = newline.lstrip()[8:]
+
+            if(statusline in lnaLines):
+                # stop tracking LNA initalisation errors and stop if there are more than expected errors
+                self.lnaIniting = False
+                if(self.lnaErrorCount > 1):
+                    self.stop(True, True)
+            self.statelog.append(statusline)
             fifosopen = 0
             usbopen = False
             stvopen = False
@@ -310,7 +331,7 @@ class lmManager(object):
                     stvopen = True
                 elif(line.startswith('tuner:')):
                     tuneropen = True
-                elif(line in ['found new NIM with LNAs', 'found an older NIM with no LNA']):
+                elif(line in lnaLines):
                     lnasfound += 1
 
             if(fifosopen==2 and usbopen and stvopen and tuneropen and lnasfound==2):
