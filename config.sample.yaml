@@ -27,7 +27,7 @@ gpio:
     rxGood: 4
     buttons:
         POWER:  16
-        UP:     18
+        UP:     14
         DOWN:   27
         LEFT:   22
         RIGHT:  23
