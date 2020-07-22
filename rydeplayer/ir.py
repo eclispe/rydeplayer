@@ -230,6 +230,13 @@ class irConfig(object):
 
         return codemap
 
+    def getDrivers(self):
+        drivers = set()
+        for handset in self.handsetLib.values():
+            drivers |= handset.getDrivers()
+        return drivers
+
+
 class irManager(object):
     def __init__(self, eventCallback, config):
         self.eventCallback = eventCallback
