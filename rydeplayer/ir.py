@@ -18,9 +18,9 @@ import time, evdev, sys, os, yaml
 import rydeplayer.common
 
 class irHandset(object):
-    def __init__(self, name, driver, buttons):
+    def __init__(self, name, drivers, buttons):
         self.name = name
-        self.driver = driver
+        self.drivers = drivers
         self.buttons = buttons
 
     def getName(self):
@@ -29,8 +29,8 @@ class irHandset(object):
     def getFriendlyName(self):
         return self.friendlyName
 
-    def getDriver(self):
-        return self.driver
+    def getDrivers(self):
+        return self.drivers
 
     def getButtons(self):
         return self.buttons
@@ -58,7 +58,7 @@ class irHandset(object):
 class irConfig(object):
     def __init__(self, config = None):
         self.handsetLib = {
-            "mininec": irHandset("Mini NEC", "nec", {
+            "mininec": irHandset("Mini NEC", set("nec"), {
                 "POWER":0x4d,
                 "UP":0x05,
                 "DOWN":0x02,
@@ -165,16 +165,40 @@ class irConfig(object):
                     if len(handsetData['buttons']) > 0:
                         if 'name' in handsetData:
                             if isinstance(handsetData['name'], str):
+                                driverList = set()
+                                driverDefined = False
+                                if 'drivers' in handsetData:
+                                    if isinstance(handsetData['drivers'], list):
+                                        driverDefined = True
+                                        for driver in handsetData['drivers']:
+                                            if isinstance(driver, str):
+                                                if driver in self.validDrivers:
+                                                    driverList.add(driver)
+                                                else:
+                                                    print("Handset driver not recognised, skipping")
+                                            else:
+                                                print("Handset driver list contains non-string, skipping")
+                                    else:
+                                        print("Handset driver is not a list, skipping")
+
                                 if 'driver' in handsetData:
-                                    if isinstance(handsetData['driver'], str):
+                                    if driverDefined:
+                                        print("Both types of driver defintion used, should only use one.")
+                                    driverDefined = True
+                                    if isinstance(handsetData['driver'],str):
                                         if handsetData['driver'] in self.validDrivers:
-                                            return irHandset(handsetData['name'], handsetData['driver'], handsetData['buttons'])
+                                            driverList.add(handsetData['driver'])
                                         else:
                                             print("Handset driver not recognised, skipping")
                                     else:
                                         print("Handset driver is not a string, skipping")
+                                if driverDefined:
+                                    if len(driverList) > 0:
+                                        return irHandset(handsetData['name'], driverList, handsetData['buttons'])
+                                    else:
+                                        print("Handset has no valid drivers")
                                 else:
-                                    print("Handset driver missing, skipping")
+                                    print("Handset drivers missing, skipping")
                             else:
                                 print("Handset name is not a string, skipping")
                         else:
