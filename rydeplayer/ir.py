@@ -80,7 +80,7 @@ class irConfig(object):
             }),
         }
         self.irhandsets = ['mininec'] # list of handsets to load from library
-        self.validDrivers = ['rc-5', 'rc-5-sx', 'jvc', 'sony', 'nec', 'sanyo', 'mce_kbd', 'rc-6', 'sharp', 'xmp', 'imon'] # list of valid drivers TODO: load from system automatically
+        self.validDrivers = ['rc-5', 'rc-5-sz', 'jvc', 'sony', 'nec', 'sanyo', 'mce_kbd', 'rc-6', 'sharp', 'xmp', 'imon'] # list of valid drivers TODO: load from system automatically
         self.libraryPath = "/home/pi/handsets" # default handset library path
         self.repeatFirst=200 # how long to wait before starting to repeat
         self.repeatDelay=100 # while repeating how long between repeats
