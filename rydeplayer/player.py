@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib
+import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools
 from . import longmynd
 from . import ir
 import rydeplayer.gpio
@@ -31,6 +31,7 @@ class Theme(object):
             'black': (0,0,0,255),
             'white': (255,255,255,255),
             'red': (255,0,0,255),
+            'textError': (255,0,0,255),
             'backgroundMenu': (57,169,251,255),
             'backgroundSubMenu': (57,169,251,255),
             'backgroundPlayState': (255,0,0,255),
@@ -66,10 +67,10 @@ class guiState(rydeplayer.states.gui.SuperStates):
     def startup(self, config, debugFunctions):
         # main menu states, order is important to get menus and sub menus to display in the right place
         mainMenuStates = {
-            'freq-sel' : rydeplayer.states.gui.NumberSelect(self.theme, 'freq', 'KHz', config.tuner.freq, 2450000, 144000, config.tuner.setFrequency),
-            'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "port", "sr", "freq-sel"),
-            'sr-sel'   : rydeplayer.states.gui.NumberSelect(self.theme, 'sr', 'KSPS', config.tuner.sr, 27500, 33, config.tuner.setSymbolRate),
-            'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "pol", "sr-sel"),
+            'freq-sel' : rydeplayer.states.gui.NumberSelect(self.theme, 'freq', 'KHz', config.tuner.freq, config.tuner.setFrequency),
+            'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "port", "sr", "freq-sel", config.tuner.freq),
+            'sr-sel'   : rydeplayer.states.gui.NumberSelect(self.theme, 'sr', 'KSPS', config.tuner.sr, config.tuner.setSymbolRate),
+            'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "pol", "sr-sel", config.tuner.sr),
             'pol-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'pol', {longmynd.PolarityEnum.NONE:'None', longmynd.PolarityEnum.HORIZONTAL:'Horizontal', longmynd.PolarityEnum.VERTICAL:'Vertical'}, config.tuner.pol, config.tuner.setPolarity),
             'pol'      : rydeplayer.states.gui.MenuItem(self.theme, "LNB Polarity", "sr", "port", "pol-sel"),
             'port-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'port', {longmynd.inPortEnum.TOP:'Top', longmynd.inPortEnum.BOTTOM:'Bottom'}, config.tuner.port, config.tuner.setInputPort),
@@ -90,6 +91,9 @@ class guiState(rydeplayer.states.gui.SuperStates):
             'menu': rydeplayer.states.gui.Menu(self.theme, 'home', mainMenuStates, "freq"),
             'home': Home(self.theme)
         }
+        # add callback to rederaw menu item if tuner data is updated
+        config.tuner.freq.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['freq']))
+        config.tuner.sr.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['sr']))
         self.state_name = "home"
         self.state = self.state_dict[self.state_name]
         self.state.startup()

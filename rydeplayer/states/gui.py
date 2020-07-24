@@ -52,15 +52,17 @@ class SuperStates(States):
 
 # Basic menu item that draws and navigates but nothing else
 class MenuItem(States):
-    def __init__(self, theme, label, up, down, select):
+    def __init__(self, theme, label, up, down, select, validTrack = None):
         super().__init__(theme)
         self.next = None
         self.done = False
         self.label = label
+        self.validTrack = validTrack
         boxheight = self.theme.fonts.menuH1.size(label)[1]
         self.surface = pygame.Surface((self.theme.menuWidth*0.8, boxheight), pygame.SRCALPHA)
-        self.textSurface = self.theme.fonts.menuH1.render(label, True, self.theme.colours.black)
-        self.surface.fill(self.theme.colours.transparent)
+        self.textSurface = self.drawText(label)
+        self.backColour = self.theme.colours.transparent
+        self.surface.fill(self.backColour)
         self.textrect = self.textSurface.get_rect()
         self.textrect.centery = self.surface.get_height()/2
         #right align the text in the highligh box
@@ -71,14 +73,27 @@ class MenuItem(States):
         self.down = down
         #what do do when it is "selected"
         self.select = select
+        if validTrack is not None:
+            validTrack.addValidCallback(self.redrawText)
+    def drawText(self, label):
+        textColour = self.theme.colours.black
+        if not (self.validTrack is None or self.validTrack.isValid()):
+            textColour = self.theme.colours.textError
+        return self.theme.fonts.menuH1.render(label, True, textColour)
+    def redraw(self):
+        self.surface.fill(self.backColour)
+        self.surface.blit(self.textSurface, self.textrect)
+    def redrawText(self):
+        self.textSurface = self.drawText(self.label)
+        self.redraw()
     def cleanup(self):
         # repaint with transparent background
-        self.surface.fill(self.theme.colours.transparent)
-        self.surface.blit(self.textSurface, self.textrect)
+        self.backColour = self.theme.colours.transparent
+        self.redraw()
     def startup(self):
         # repaint with highlighted background
-        self.surface.fill(self.theme.colours.transpBack)
-        self.surface.blit(self.textSurface, self.textrect)
+        self.backColour = self.theme.colours.transpBack
+        self.redraw()
     def get_surface(self):
         return self.surface
     def get_event(self, event):
@@ -231,7 +246,7 @@ class ListSelect(SuperStates):
 
 # single digit selector for a larger number
 class DigitSelect(States):
-    def __init__(self, theme, left, right, currentValue, maxValue, minValue):
+    def __init__(self, theme, left, right, currentValue, maxValue, minValue, errorHighlight):
         super().__init__(theme)
         self.active = False
         self.next = None
@@ -256,6 +271,7 @@ class DigitSelect(States):
         self.surface.blit(self.textSurface, self.textrect)
         self.surfacerect = self.surface.get_rect()
         self.currentValue = currentValue
+        self.errorHighlight = errorHighlight
     def cleanup(self):
         self.surface.fill(self.theme.colours.transparent)
         self.surface.blit(self.textSurface, self.textrect)
@@ -305,8 +321,19 @@ class DigitSelect(States):
         return False
     def setValue(self, newValue):
         self.currentValue = newValue
+    def setErrorHighlight(self, newValue):
+        if newValue != self.errorHighlight:
+            self.errorHighlight = newValue
+            self.update()
+            return True
+        else:
+            return False
+
     def drawDigit(self):
-        self.textSurface = self.theme.fonts.menuH1.render(str(self.currentValue), True, self.theme.colours.black)
+        textColour = self.theme.colours.black
+        if self.errorHighlight:
+            textColour = self.theme.colours.textError
+        self.textSurface = self.theme.fonts.menuH1.render(str(self.currentValue), True, textColour)
         if self.active:
             self.surface.fill(self.theme.colours.transpBack)
         else:
@@ -321,18 +348,32 @@ class DigitSelect(States):
 
 # sub menu for inputing whole numbers and pass new value to callback when done
 class NumberSelect(SuperStates):
-    def __init__(self, theme, backState, unittext, currentValue, maxValue, minValue, updateCallback):
+    def __init__(self, theme, backState, unittext, valueConfig, updateCallback):
         super().__init__(theme)
         # where to go back to
         self.next = backState
         # how mnay digits do we need to allow the max number to be put in
-        self.digitCount = len(str(maxValue))
-        self.currentValue = currentValue
+        self.digitCount = len(str(valueConfig.getMaxValue()))
+        self.valueConfig = valueConfig
+        self.top = 0
+        self.left = 0
+
         self.done = False
         self.updateCallback = updateCallback
+        self.unittext = unittext
+    def cleanup(self):
+        super().cleanup()
+        # reset back to the first digit if we close the menu
+        self.state_name = '0'
+        self.surface.fill(self.theme.colours.transparent)
+    def startup(self):
+        self.currentValue = self.valueConfig.getValue()
+        self.maxValue = self.valueConfig.getMaxValue()
+        self.minValue = self.valueConfig.getMinValue()
+        self.inRange =  self.currentValue >= self.minValue and self.currentValue <= self.maxValue
         # how big a box do we need
         boxwidth = int(self.theme.menuWidth*0.1)
-        boxheight = self.theme.fonts.menuH1.size("0123456789"+unittext)[1]
+        boxheight = self.theme.fonts.menuH1.size("0123456789"+self.unittext)[1]
         # setup the state machine and create the digit states
         self.state_dict = {}
         for n in range(self.digitCount):
@@ -340,31 +381,28 @@ class NumberSelect(SuperStates):
             prevkey = str((n-1)%self.digitCount)
             nextkey = str((n+1)%self.digitCount)
             # what is the current value of this digit from the whole number
-            currentDigit = math.floor((currentValue%pow(10,self.digitCount-n))/pow(10, self.digitCount-n-1))
+            currentDigit = math.floor((self.currentValue%pow(10,self.digitCount-n))/pow(10, self.digitCount-n-1))
             # what is the biggest this digit could be based on its position and the max number
-            maxDigit = math.floor(maxValue/pow(10,self.digitCount-n-1))
+            maxDigit = math.floor(self.maxValue/pow(10,self.digitCount-n-1))
             if(maxDigit > 9):
                 maxDigit = 9
             # name the state after its position
-            self.state_dict[str(key)] = DigitSelect(self.theme, prevkey, nextkey, currentDigit, maxDigit, 0)
+            self.state_dict[str(key)] = DigitSelect(self.theme, prevkey, nextkey, currentDigit, maxDigit, 0, not self.inRange)
             boxwidth += self.state_dict[str(key)].surface.get_width() + self.theme.menuWidth*0.01
-        boxwidth += self.theme.fonts.menuH1.size(unittext)[0]
+        boxwidth += self.theme.fonts.menuH1.size(self.unittext)[0]
         # create and setup the surface
         self.surface = pygame.Surface((boxwidth, boxheight), pygame.SRCALPHA)
         self.surface.fill(self.theme.colours.transparent)
         self.surfacerect = self.surface.get_rect()
-        self.textSurface = self.theme.fonts.menuH1.render(unittext, True, self.theme.colours.black)
+
+        self.textSurface = self.theme.fonts.menuH1.render(self.unittext, True, self.theme.colours.black)
         self.textrect = self.textSurface.get_rect()
         self.textrect.centery = self.surface.get_height()/2
         self.textrect.right = self.surfacerect.right-self.theme.menuWidth*0.05
+        self.surfacerect.top = self.top
+        self.surfacerect.left = self.left
         # select the first digit, there should always be at least one
         self.state_name = '0'
-    def cleanup(self):
-        super().cleanup()
-        # reset back to the first digit if we close the menu
-        self.state_name = '0'
-        self.surface.fill(self.theme.colours.transparent)
-    def startup(self):
         self.surface.fill(self.theme.colours.backgroundSubMenu)
         self.surface.blit(self.textSurface, self.textrect)
         self.state = self.state_dict[self.state_name]
@@ -384,17 +422,23 @@ class NumberSelect(SuperStates):
     def get_surface(self):
         return self.surface
     def get_event(self, event):
-        if(not self.state.get_event(event)):
-            if(event == navEvent.BACK):
+        handeled = self.state.get_event(event)
+        newValue = 0
+        for n in range(self.digitCount):
+            digitState = self.state_dict[str(n)]
+            newValue += digitState.currentValue*pow(10,self.digitCount-n-1)
+        self.inRange =  newValue >= self.minValue and newValue <= self.maxValue
+        for digit in self.state_dict.values():
+            if digit.setErrorHighlight(not self.inRange):
+                self.surface.fill(self.theme.colours.backgroundSubMenu, digit.surfacerect)
+                self.surface.blit(digit.get_surface(), digit.surfacerect)
+        if not handeled:
+            if event == navEvent.BACK:
                 self.done = True
                 return True
-            if(event == navEvent.SELECT):
-                newValue = 0
-                for n in range(self.digitCount):
-                    digitState = self.state_dict[str(n)]
-                    newValue += digitState.currentValue*pow(10,self.digitCount-n-1)
+            if event == navEvent.SELECT :
                 self.currentValue = newValue
-                if(self.updateCallback is not None):
+                if self.updateCallback is not None:
                     self.updateCallback(newValue)
                 self.done = True
                 return True
@@ -453,9 +497,10 @@ class Menu(SuperStates):
                 menuState.surfacerect.left = self.theme.menuWidth
                 self.surface.blit(menuState.get_surface(), menuState.surfacerect)
             elif(isinstance(menuState, NumberSelect)):
-                menuState.surfacerect.top = drawnext
-                menuState.surfacerect.left = self.theme.menuWidth
-                self.surface.blit(menuState.get_surface(), menuState.surfacerect)
+                menuState.top = drawnext
+                menuState.left = self.theme.menuWidth
+                print((drawnext, self.theme.menuWidth))
+#                self.surface.blit(menuState.get_surface(), menuState.surfacerect)
             elif(isinstance(menuState, MenuItem)):
                 menuState.surfacerect.top = drawnext
                 menuState.surfacerect.right = self.theme.menuWidth*0.9
@@ -474,21 +519,20 @@ class Menu(SuperStates):
         elif(not self.state.get_event(event)):
             if(event == navEvent.BACK):
                 self.done = True
+
+    def redrawState(self, state):
+        if(isinstance(state, MenuItem)):
+            self.surface.fill(self.theme.colours.backgroundMenu, state.surfacerect)
+            self.surface.blit(state.get_surface(), state.surfacerect)
+        elif(isinstance(state, ListSelect) or isinstance(state, NumberSelect)):
+            self.surface.fill(self.theme.colours.transparent, state.surfacerect)
+            self.surface.blit(state.get_surface(), state.surfacerect)
+
     def update(self):
         oldstate = self.state
         super().update()
         # paint out the old states
-        if(isinstance(oldstate, MenuItem)):
-            self.surface.fill(self.theme.colours.backgroundMenu, oldstate.surfacerect)
-            self.surface.blit(oldstate.get_surface(), oldstate.surfacerect)
-        if(isinstance(oldstate, ListSelect) or isinstance(oldstate, NumberSelect)):
-            self.surface.fill(self.theme.colours.transparent, oldstate.surfacerect)
-            self.surface.blit(oldstate.get_surface(), oldstate.surfacerect)
+        self.redrawState(oldstate)
         # paint in the new states
-        if(isinstance(self.state, MenuItem)):
-            self.surface.fill(self.theme.colours.backgroundMenu, self.state.surfacerect)
-            self.surface.blit(self.state.get_surface(), self.state.surfacerect)
-        if(isinstance(self.state, ListSelect) or isinstance(self.state, NumberSelect)):
-            self.surface.fill(self.theme.colours.transparent, self.state.surfacerect)
-            self.surface.blit(self.state.get_surface(), self.state.surfacerect)
+        self.redrawState(self.state)
         self.dispmanxlayer.updateLayer()

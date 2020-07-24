@@ -15,6 +15,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import enum, os, stat, subprocess, pty, select, copy, fcntl
+import rydeplayer.common
 
 class inPortEnum(enum.Enum):
     TOP = enum.auto()
@@ -25,22 +26,43 @@ class PolarityEnum(enum.Enum):
     HORIZONTAL = enum.auto()
     VERTICAL = enum.auto()
 
-class tunerConfig(object):
+class tunerConfigInt(rydeplayer.common.validTracker):
+    def __init__(self, value, minval, maxval):
+        self.value = value
+        self.minval = minval
+        self.maxval = maxval
+        # Initalise valid tracker with current valid status
+        super().__init__(value >= minval and value <= maxval)
+
+    def setValue(self, newval):
+        if self.value != newval:
+            self.value = newval
+            self.updateValid(self.value >= self.minval and self.value <= self.maxval)
+
+    def getValue(self):
+        return self.value
+
+    def getMinValue(self):
+        return self.minval
+
+    def getMaxValue(self):
+        return self.maxval
+        
+
+class tunerConfig(rydeplayer.common.validTracker):
     def __init__(self):
         # default is QO-100 Beacon
         self.updateCallback = None # function that is called when the config changes
+        self.freq = tunerConfigInt(741500, 144000, 2450000)
+        self.freq.addValidCallback(self.updateValid)
+        self.sr = tunerConfigInt(1500, 33, 27500)
+        self.sr.addValidCallback(self.updateValid)
         self.setConfig(741500, 1500, PolarityEnum.NONE, inPortEnum.TOP)
-
-#    def __init__(self, freq, sr, pol, port):
-#        self.freq = freq # frequency
-#        self.sr = sr # symbol rate
-#        self.pol = pol # LNB polarity / output voltage select, none, horizontal, vertical
-#        self.port = port # input port (top/bottom f connector)
-#        self.updateCallback = None # function that is called when the config changes
+        super().__init__(self.calcValid())
 
     def setConfig(self, freq, sr, pol, port):
-        self.freq = freq
-        self.sr = sr
+        self.freq.setValue(freq)
+        self.sr.setValue(sr)
         self.pol = pol
         self.port = port
         self.runCallback()
@@ -58,8 +80,8 @@ class tunerConfig(object):
                     # frequency is valid, check symbol rate
                     if 'sr' in config:
                         if isinstance(config['sr'], int):
-                            self.freq = config['freq']
-                            self.sr = config['sr']
+                            self.freq.setValue(config['freq'])
+                            self.sr.setValue(config['sr'])
                             configUpdated = True
                         else:
                             print("Symbol rate config invalid, skipping frequency and symbol rate")
@@ -116,10 +138,10 @@ class tunerConfig(object):
         return perfectConfig
 
     def setFrequency(self, newFreq):
-        self.freq = newFreq
+        self.freq.setValue(newFreq)
         self.runCallback()
     def setSymbolRate(self, newSr):
-        self.sr = newSr
+        self.sr.setValue(newSr)
         self.runCallback()
     def setPolarity(self, newPol):
         self.pol = newPol
@@ -129,24 +151,35 @@ class tunerConfig(object):
         self.runCallback()
     def setCallbackFunction(self, newCallback):
         self.updateCallback = newCallback
+
+    def updateValid(self):
+        return super().updateValid(self.calcValid())
+
+    def calcValid(self):
+        newValid = True
+        newValid = newValid and self.freq.isValid()
+        newValid = newValid and self.sr.isValid()
+        return newValid;
+
+
     def runCallback(self):
-        if(self.updateCallback is not None):
+        if self.updateCallback is not None :
             self.updateCallback(self)
     def copyConfig(self):
         # return a copy of the config details but with no callback connected
         newConfig = tunerConfig()
-        newConfig.setConfig(self.freq, self.sr, self.pol, self.port)
+        newConfig.setConfig(self.freq.getValue(), self.sr.getValue(), self.pol, self.port)
         return newConfig
     def __eq__(self,other):
         # compare 2 configs ignores the callback
         if not isinstance(other,tunerConfig):
             return NotImplemented
         else:
-            return self.freq == other.freq and self.sr == other.sr and self.pol == other.pol and self.port ==other.port
+            return self.freq.getValue() == other.freq.getValue() and self.sr.getValue() == other.sr.getValue() and self.pol == other.pol and self.port ==other.port
     def __str__(self):
         output = ""
-        output += "  Frequency: "+str(self.freq)+"\n"
-        output += "Symbol Rate: "+str(self.sr)+"\n"
+        output += "  Frequency: "+str(self.freq.getValue())+"\n"
+        output += "Symbol Rate: "+str(self.sr.getValue())+"\n"
         output += "   Polarity: "+str(self.pol)+"\n"
         output += "       Port: "+str(self.port)
         return output
@@ -380,24 +413,27 @@ class lmManager(object):
             for logline in self.lmlog:
                 print(logline)
     def start(self):
-        if(self.process == None):
-            print("start")
-            self.lmstarted = False
-            self.statusrecv = False
-            self.statelog=[]
-            self.lmlog=[]
-            args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename]
-            if self.activeConfig.port == inPortEnum.BOTTOM:
-                args.append('-w')
-            if self.activeConfig.pol == PolarityEnum.HORIZONTAL:
-                args.extend(['-p', 'h'])
-            elif self.activeConfig.pol == PolarityEnum.VERTICAL:
-                args.extend(['-p', 'v'])
-            args.append(str(self.activeConfig.freq))
-            args.append(str(self.activeConfig.sr))
-            self.process = subprocess.Popen(args, stdout=self.stdoutWritefd, stderr=subprocess.STDOUT, bufsize=0)
+        if self.activeConfig.isValid():
+            if self.process == None :
+                print("start")
+                self.lmstarted = False
+                self.statusrecv = False
+                self.statelog=[]
+                self.lmlog=[]
+                args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename]
+                if self.activeConfig.port == inPortEnum.BOTTOM:
+                    args.append('-w')
+                if self.activeConfig.pol == PolarityEnum.HORIZONTAL:
+                    args.extend(['-p', 'h'])
+                elif self.activeConfig.pol == PolarityEnum.VERTICAL:
+                    args.extend(['-p', 'v'])
+                args.append(str(self.activeConfig.freq.getValue()))
+                args.append(str(self.activeConfig.sr.getValue()))
+                self.process = subprocess.Popen(args, stdout=self.stdoutWritefd, stderr=subprocess.STDOUT, bufsize=0)
+            else:
+                print("LM already running")
         else:
-            print("LM already running")
+            print("Can't start, config invalid")
     def restart(self):
         if(self.process != None):
             self.stop()

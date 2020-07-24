@@ -46,3 +46,23 @@ class navEvent(enum.Enum):
     @property
     def numericValue(self):
         return self.numericVal
+
+class validTracker(object):
+    def __init__(self, initValid):
+        self.valid = initValid
+        self.validChangeCallbacks = []
+
+    def addValidCallback(self, callback):
+        self.validChangeCallbacks.append(callback)
+
+    def removeValidCallback(self, callback):
+        self.validChangeCallbacks.remove(callback)
+    
+    def updateValid(self, newValid):
+        if newValid != self.valid:
+            self.valid = newValid
+            for callback in self.validChangeCallbacks:
+                callback()
+
+    def isValid(self):
+        return self.valid
