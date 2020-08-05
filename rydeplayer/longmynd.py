@@ -328,53 +328,57 @@ class lmManager(object):
     def processStdout(self):
         """track the starup state of longmynd from its STDOUT"""
         rawnewlines = self.stdoutReadfd.readlines()
+        stop = False
         for rawnewline in rawnewlines:
             newline = rawnewline.rstrip()
             self.lmlog.append(newline)
-            if(newline.startswith("ERROR:")):
-                # its probably crashed, stop and output
-                # some errors are't critical while lna are initalising, might just be an old NIM
-                if(self.lnaIniting and newline.startswith("ERROR: i2c read reg8")):
-                    self.lnaErrorCount += 1
-                elif(not (self.lnaIniting and newline.startswith("ERROR: lna read"))):
-                    self.stop(True, True)
-            if(newline.lstrip().startswith("Flow:")):
-                flowline = (newline.lstrip()[6:])
-                if(flowline.startswith("LNA init")):
-                    # start tracking LNA initalisation errors
-                    self.lnaIniting = True
-                    self.lnaErrorCount = 0
-            if(newline.lstrip().startswith("Status:")):
-                lnaLines = ['found new NIM with LNAs', 'found an older NIM with no LNA']
-                statusline = newline.lstrip()[8:]
+            if not stop:
+                if(newline.startswith("ERROR:")):
+                    # its probably crashed, stop and output
+                    # some errors are't critical while lna are initalising, might just be an old NIM
+                    if(self.lnaIniting and newline.startswith("ERROR: i2c read reg8")):
+                        self.lnaErrorCount += 1
+                    elif(not (self.lnaIniting and newline.startswith("ERROR: lna read"))):
+                        stop = True
+                if(newline.lstrip().startswith("Flow:")):
+                    flowline = (newline.lstrip()[6:])
+                    if(flowline.startswith("LNA init")):
+                        # start tracking LNA initalisation errors
+                        self.lnaIniting = True
+                        self.lnaErrorCount = 0
+                if(newline.lstrip().startswith("Status:")):
+                    lnaLines = ['found new NIM with LNAs', 'found an older NIM with no LNA']
+                    statusline = newline.lstrip()[8:]
 
-                if(statusline in lnaLines):
-                    # stop tracking LNA initalisation errors and stop if there are more than expected errors
-                    self.lnaIniting = False
-                    self.lnaErrorCount = 0
-                    if(self.lnaErrorCount > 1):
-                        self.stop(True, True)
-                self.statelog.append(statusline)
-                fifosopen = 0
-                usbopen = False
-                stvopen = False
-                tuneropen = False
-                lnasfound = 0
-                for line in self.statelog:
-                    if(line == 'opened fifo ok'):
-                        fifosopen += 1
-                    elif(line.startswith('MPSSE')):
-                        usbopen = True
-                    elif(line.startswith('STV0910 MID')):
-                        stvopen = True
-                    elif(line.startswith('tuner:')):
-                        tuneropen = True
-                    elif(line in lnaLines):
-                        lnasfound += 1
+                    if(statusline in lnaLines):
+                        # stop tracking LNA initalisation errors and stop if there are more than expected errors
+                        self.lnaIniting = False
+                        self.lnaErrorCount = 0
+                        if(self.lnaErrorCount > 1):
+                            stop = True
+                    self.statelog.append(statusline)
+                    fifosopen = 0
+                    usbopen = False
+                    stvopen = False
+                    tuneropen = False
+                    lnasfound = 0
+                    for line in self.statelog:
+                        if(line == 'opened fifo ok'):
+                            fifosopen += 1
+                        elif(line.startswith('MPSSE')):
+                            usbopen = True
+                        elif(line.startswith('STV0910 MID')):
+                            stvopen = True
+                        elif(line.startswith('tuner:')):
+                            tuneropen = True
+                        elif(line in lnaLines):
+                            lnasfound += 1
     
-                if(fifosopen==2 and usbopen and stvopen and tuneropen and lnasfound==2):
-                    self.lmstarted = True
-                    print("lm started")
+                    if(fifosopen==2 and usbopen and stvopen and tuneropen and lnasfound==2):
+                        self.lmstarted = True
+                        print("lm started")
+        if stop:
+            self.stop(True,True)
 
     def stop(self, dumpOutput = False, waitfirst=False):
         #waitfirst is for if its crashed and we want to wait for it to die on its own so we get all the output
