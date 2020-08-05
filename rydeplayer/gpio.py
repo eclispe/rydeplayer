@@ -74,8 +74,6 @@ class gpioConfig(object):
                 else:
                     print("GPIO button map is not a map")
                     perfectConfig = False
-                print("BUTTONS")
-                print(self.pinButtonMap)
             if 'repeatFirst' in config:
                 if isinstance(config['repeatFirst'] , int):
                     self.repeatFirst = config['repeatFirst']
@@ -134,9 +132,7 @@ class gpioManager(object):
             eventPin = self.eventQueue.get()
             quit = False
             mappedEvent = self.config.pinButtonMap[eventPin]
-            print(mappedEvent)
             if(mappedEvent != None):
-#                quit=self.stepSM(mappedEvent)
                 quit=self.eventCallback(mappedEvent)
             if quit:
                 break

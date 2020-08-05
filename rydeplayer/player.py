@@ -281,7 +281,7 @@ class player(object):
         elif(fd in self.lmMan.getFDs()):
             self.lmMan.handleFD(fd)
         elif(fd in self.gpioMan.getFDs()):
-            self.gpioMan.handleFD(fd)
+            quit = self.gpioMan.handleFD(fd)
         return quit
 
     def updateState(self):
