@@ -336,11 +336,14 @@ class player(object):
         self.vlcStartup()
 
     def vlcStartup(self):
+        vlcArgs = ''
+        displaySize = pydispmanx.getDisplaySize()
+        vlcArgs += '--width '+str(displaySize[0])+' --height '+str(displaySize[1])+' '
         if self.config.debug.disableHardwareCodec:
-            self.vlcInstance = vlc.Instance('--codec ffmpeg')
-        else:
-            self.vlcInstance = vlc.Instance()
-#            self.vlcInstance = vlc.Instance('--gain 4 --alsa-audio-device hw:CARD=Headphones,DEV=0')
+            vlcArgs += '--codec ffmpeg '
+#        vlcArgs += '--gain 4 --alsa-audio-device hw:CARD=Headphones,DEV=0 '
+        print(vlcArgs)
+        self.vlcInstance = vlc.Instance(vlcArgs)
 
         self.vlcPlayer = self.vlcInstance.media_player_new()
         self.vlcMedia = self.vlcInstance.media_new_fd(self.lmMan.getMediaFd().fileno())
