@@ -26,6 +26,98 @@ class PolarityEnum(enum.Enum):
     HORIZONTAL = enum.auto()
     VERTICAL = enum.auto()
 
+class IFOffsetPolarityEnum(enum.Enum):
+    PLUS = enum.auto()
+    MINUS = enum.auto()
+
+class tunerBand(object):
+    def __init__(self):
+        self.freq = 0
+        self.polarity = IFOffsetPolarityEnum.MINUS
+
+    def setBand(self, freq, polarity):
+        self.freq = freq
+        self.polarity = polarity
+
+    def loadBand(self, config):
+        configUpdated = False
+        perfectConfig = True
+        if not isinstance(config, dict):
+            print("Band invalid, skipping")
+            perfectConfig = False
+        else:
+            # check frequency and polarity, both must be valid for either to be updated
+            if 'frequency' in config:
+                if isinstance(config['frequency'], int):
+                    # frequency is valid, check polarity
+                    if 'polarity' in config:
+                        if isinstance(config['polarity'], str):
+                            for polopt in IFOffsetPolarityEnum:
+                                if polopt.name == config['polarity'].upper():
+                                    self.polarity = polopt
+                                    self.freq = config['frequency']
+                                    configUpdated = True
+                                    break
+                        if not configUpdated:
+                            print("Band IF polarity invalid, skipping frequency and polarity")
+                            perfectConfig = False
+                    else:
+                        print("Symbol rate missing, skipping frequency and symbol rate")
+                        perfectConfig = False
+                else:
+                    print("Frequency config invalid, skipping frequency and symbol rate")
+                    perfectConfig = False
+            else:
+                print("Frequency config missing, skipping frequency and symbol rate")
+                perfectConfig = False
+        return perfectConfig
+
+    def getFrequency(self):
+        return self.freq
+
+    def getPolarity(self):
+        return self.polarity
+
+    # return tuner frequency from requested frequency
+    def mapReqToTune(self, freq):
+        if self.polarity == IFOffsetPolarityEnum.MINUS:
+            if freq > self.freq:
+                return freq - self.freq
+            else:
+                return self.freq - freq
+        else:
+            return freq + self.freq
+
+
+    # return request frequency from tuner frequeny
+    def mapTuneToReq(self, freq):
+        if self.polarity == IFOffsetPolarityEnum.PLUS:
+            if freq > self.freq:
+                return freq - self.freq
+            else:
+                return self.freq - freq
+        else:
+            return freq + self.freq
+    
+    def getOffsetStr(self):
+        output = ""
+        if self.polarity == IFOffsetPolarityEnum.PLUS:
+            output += "+"
+        else:
+            output += "-"
+        output += str(self.freq)
+        return output
+
+    def __eq__(self,other):
+        # compare 2 bands
+        if not isinstance(other,tunerBand):
+            return NotImplemented
+        else:
+            return self.freq == other.freq and self.polarity == other.polarity
+    
+    def __hash__(self):
+        return hash((self.freq, self.polarity))
+
 class tunerConfigInt(rydeplayer.common.validTracker):
     def __init__(self, value, minval, maxval):
         self.value = value
@@ -37,6 +129,12 @@ class tunerConfigInt(rydeplayer.common.validTracker):
     def setValue(self, newval):
         if self.value != newval:
             self.value = newval
+            self.updateValid(self.value >= self.minval and self.value <= self.maxval)
+
+    def setLimits(self, newMin, newMax):
+        if self.minval != newMin or self.maxval != newMax:
+            self.minval = newMin
+            self.maxval = newMax
             self.updateValid(self.value >= self.minval and self.value <= self.maxval)
 
     def getValue(self):
@@ -53,21 +151,28 @@ class tunerConfig(rydeplayer.common.validTracker):
     def __init__(self):
         # default is QO-100 Beacon
         self.updateCallback = None # function that is called when the config changes
-        self.freq = tunerConfigInt(741500, 144000, 2450000)
+        self.band = tunerBand()
+        self.band.setBand(0, IFOffsetPolarityEnum.MINUS)
+        self.tunerMinFreq = 144000
+        self.tunerMaxFreq = 2450000
+        defaultfreq = 741500
+        self.freq = tunerConfigInt(defaultfreq, self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         self.freq.addValidCallback(self.updateValid)
         self.sr = tunerConfigInt(1500, 33, 27500)
         self.sr.addValidCallback(self.updateValid)
-        self.setConfig(741500, 1500, PolarityEnum.NONE, inPortEnum.TOP)
+        self.setConfig(defaultfreq, 1500, PolarityEnum.NONE, inPortEnum.TOP, self.band)
         super().__init__(self.calcValid())
 
-    def setConfig(self, freq, sr, pol, port):
+    def setConfig(self, freq, sr, pol, port, band):
         self.freq.setValue(freq)
         self.sr.setValue(sr)
         self.pol = pol
         self.port = port
+        self.band = band
+        self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         self.runCallback()
 
-    def loadConfig(self, config):
+    def loadConfig(self, config, bandLibrary = []):
         configUpdated = False
         perfectConfig = True
         if not isinstance(config, dict):
@@ -94,6 +199,20 @@ class tunerConfig(rydeplayer.common.validTracker):
                     perfectConfig = False
             else:
                 print("Frequency config missing, skipping frequency and symbol rate")
+                perfectConfig = False
+
+            if 'band' in config:
+                bandObject = tunerBand()
+                if bandObject.loadBand(config['band']):
+                    # dedupe band obects with library
+                    if bandObject in bandLibrary:
+                        bandObject = bandLibrary[bandLibrary.index(bandObject)]
+                    self.band = bandObject
+                else:
+                    print("Could not load default band, skipping")
+                    perfectConfig = False
+            else:
+                print("Band config missing, skipping")
                 perfectConfig = False
 
             if 'pol' in config:
@@ -133,6 +252,7 @@ class tunerConfig(rydeplayer.common.validTracker):
             else:
                 print("Input port config missing, skipping")
                 perfectConfig = False
+        self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         if configUpdated: # run the callback if we chaged something
             self.runCallback()
         return perfectConfig
@@ -149,6 +269,10 @@ class tunerConfig(rydeplayer.common.validTracker):
     def setInputPort(self, newPort):
         self.port = newPort
         self.runCallback()
+    def setBand(self, newBand):
+        self.band = newBand
+        self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        self.runCallback()
     def setCallbackFunction(self, newCallback):
         self.updateCallback = newCallback
 
@@ -161,27 +285,27 @@ class tunerConfig(rydeplayer.common.validTracker):
         newValid = newValid and self.sr.isValid()
         return newValid;
 
-
     def runCallback(self):
         if self.updateCallback is not None :
             self.updateCallback(self)
     def copyConfig(self):
         # return a copy of the config details but with no callback connected
         newConfig = tunerConfig()
-        newConfig.setConfig(self.freq.getValue(), self.sr.getValue(), self.pol, self.port)
+        newConfig.setConfig(self.freq.getValue(), self.sr.getValue(), self.pol, self.port, self.band)
         return newConfig
     def __eq__(self,other):
         # compare 2 configs ignores the callback
         if not isinstance(other,tunerConfig):
             return NotImplemented
         else:
-            return self.freq.getValue() == other.freq.getValue() and self.sr.getValue() == other.sr.getValue() and self.pol == other.pol and self.port ==other.port
+            return self.freq.getValue() == other.freq.getValue() and self.sr.getValue() == other.sr.getValue() and self.pol == other.pol and self.port ==other.port and self.band == other.band
     def __str__(self):
         output = ""
-        output += "  Frequency: "+str(self.freq.getValue())+"\n"
-        output += "Symbol Rate: "+str(self.sr.getValue())+"\n"
-        output += "   Polarity: "+str(self.pol)+"\n"
-        output += "       Port: "+str(self.port)
+        output += "Request Frequency: "+str(self.freq.getValue())+"\n"
+        output += "        IF offset: "+self.band.getOffsetStr()+"\n"
+        output += "      Symbol Rate: "+str(self.sr.getValue())+"\n"
+        output += "         Polarity: "+str(self.pol)+"\n"
+        output += "             Port: "+str(self.port)
         return output
 
 class lmManager(object):
@@ -401,6 +525,7 @@ class lmManager(object):
                 break
             newline = rawnewline.rstrip()
             self.lmlog.append(newline)
+
         self.stdoutReadfd.close()
         self.statusFIFOfd.close()
         #open a clean buffer ready for the restart
@@ -431,7 +556,7 @@ class lmManager(object):
                     args.extend(['-p', 'h'])
                 elif self.activeConfig.pol == PolarityEnum.VERTICAL:
                     args.extend(['-p', 'v'])
-                args.append(str(self.activeConfig.freq.getValue()))
+                args.append(str(self.activeConfig.band.mapReqToTune(self.activeConfig.freq.getValue())))
                 args.append(str(self.activeConfig.sr.getValue()))
                 self.process = subprocess.Popen(args, stdout=self.stdoutWritefd, stderr=subprocess.STDOUT, bufsize=0)
             else:

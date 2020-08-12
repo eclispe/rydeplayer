@@ -352,9 +352,9 @@ class NumberSelect(SuperStates):
         super().__init__(theme)
         # where to go back to
         self.next = backState
-        # how mnay digits do we need to allow the max number to be put in
-        self.digitCount = len(str(valueConfig.getMaxValue()))
         self.valueConfig = valueConfig
+        # how many digits do we need to allow the max number to be put in
+        self.digitCount = len(str(self.valueConfig.getMaxValue()))
         self.top = 0
         self.left = 0
 
@@ -367,6 +367,8 @@ class NumberSelect(SuperStates):
         self.state_name = '0'
         self.surface.fill(self.theme.colours.transparent)
     def startup(self):
+        # how many digits do we need to allow the max number to be put in
+        self.digitCount = len(str(self.valueConfig.getMaxValue()))
         self.currentValue = self.valueConfig.getValue()
         self.maxValue = self.valueConfig.getMaxValue()
         self.minValue = self.valueConfig.getMinValue()

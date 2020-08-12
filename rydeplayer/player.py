@@ -70,14 +70,17 @@ class guiState(rydeplayer.states.gui.SuperStates):
             'freq-sel' : rydeplayer.states.gui.NumberSelect(self.theme, 'freq', 'KHz', config.tuner.freq, config.tuner.setFrequency),
             'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "port", "sr", "freq-sel", config.tuner.freq),
             'sr-sel'   : rydeplayer.states.gui.NumberSelect(self.theme, 'sr', 'KSPS', config.tuner.sr, config.tuner.setSymbolRate),
-            'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "pol", "sr-sel", config.tuner.sr),
+            'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "band", "sr-sel", config.tuner.sr),
+            'band-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'band', config.bands, config.tuner.band, config.tuner.setBand),
+            'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "pol", "band-sel"),
             'pol-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'pol', {longmynd.PolarityEnum.NONE:'None', longmynd.PolarityEnum.HORIZONTAL:'Horizontal', longmynd.PolarityEnum.VERTICAL:'Vertical'}, config.tuner.pol, config.tuner.setPolarity),
-            'pol'      : rydeplayer.states.gui.MenuItem(self.theme, "LNB Polarity", "sr", "port", "pol-sel"),
+            'pol'      : rydeplayer.states.gui.MenuItem(self.theme, "LNB Polarity", "band", "port", "pol-sel"),
             'port-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'port', {longmynd.inPortEnum.TOP:'Top', longmynd.inPortEnum.BOTTOM:'Bottom'}, config.tuner.port, config.tuner.setInputPort),
             'port'     : rydeplayer.states.gui.MenuItem(self.theme, "Input Port", "pol", "freq", "port-sel"),
 #            'autoplay-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'autoplay', {True:'Enabled', False:'Disabled'}, config.debug.autoplay, config.setAutoplay),
 #            'autoplay' : rydeplayer.states.gui.MenuItem(self.theme, "Autoplay", "port", "vlcplay", "autoplay-sel"),
         }
+
         firstkey = 'freq'
         lastkey = 'port'
         for key in debugFunctions:
@@ -131,6 +134,9 @@ class rydeConfig(object):
             'mediapath': '/home/pi/lmmedia',
             'statuspath': '/home/pi/lmstatus',
             })
+        self.bands = {}
+        defaultBand = longmynd.tunerBand()
+        self.bands[defaultBand] = "None"
         self.debug = type('debugConfig', (object,), {
             'autoplay': True,
             'disableHardwareCodec': True,
@@ -155,6 +161,26 @@ class rydeConfig(object):
                     return False
             else:
                 print("WARNING: no config revision present, config load my fail")
+            if 'bands' in config:
+                if isinstance(config['bands'], dict):
+                    newBands = {}
+                    exsistingBands = list(self.bands.keys())
+                    for bandName in config['bands']:
+                        bandDict = config['bands'][bandName]
+                        bandObject = longmynd.tunerBand()
+                        if bandObject.loadBand(bandDict):
+                            # dedupe band object with exsisting library
+                            if bandObject in exsistingBands:
+                                bandObject = exsistingBands[exsistingBands.index(bandObject)]
+                            newBands[bandObject] = bandName
+                    if len(newBands) > 1:
+                        self.bands = newBands
+                    else:
+                        print("No valid bands, skipping")
+
+                else:
+                    print("Invalid band library")
+                    perfectConfig = False
             # parse critical longmynd paths
             if 'longmynd' in config:
                 if isinstance(config['longmynd'], dict):
@@ -182,7 +208,7 @@ class rydeConfig(object):
                     perfectConfig = False
             # pass default tuner config to be parsed by longmynd module
             if 'default' in config:
-                perfectConfig = perfectConfig and self.tuner.loadConfig(config['default'])
+                perfectConfig = perfectConfig and self.tuner.loadConfig(config['default'], list(self.bands.keys()))
             # pass ir config to be parsed by the ir config container
             if 'ir' in config:
                 perfectConfig = perfectConfig and self.ir.loadConfig(config['ir'])

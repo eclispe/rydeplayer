@@ -22,6 +22,16 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * ```binpath``` path to the Longmynd binary.
   * ```mediapath``` path to Longmynd's media FIFO, this will be auto-created if it doesn't exist.
   * ```statuspath``` path to Longmynd's status FIFO, this will be auto-created if it doesn't exist.
+* ```bands```
+  * Name of the band, you may have to put it in double quotes ```"``` if you want to use names with various caracters such as ```:``` in it. It is recommended that you add an anchor if you need to reference the band later, e.g. ```"LNB Low": &bandlnblow```
+    * ```frequency``` IF frequency value in kHz
+    * ```polarity``` Select either ```PLUS``` or ```MINUS``` depending on if you want to tune the sum or the difference frequency respectively
+* ```default```
+  * ```freq``` Initial frequency to tune to on startup
+  * ```band``` Initial band, its recommended to use an alias to the band in the band library, e.g. ```band: *bandlnblow```
+  * ```sr``` Initial symbol rate in kSps
+  * ```pol``` Initial polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```
+  * ```port``` Initial inpuit port. Choose from ```TOP``` or ```BOTTOM```
 * ```ir``` This section defines the IR handset behaviour.
   * ```repeatFirst``` The time to wait before beginning to repeat an IR events in ms.
   * ```repeatDelay``` The time between repeats once repeating has begun in ms.
