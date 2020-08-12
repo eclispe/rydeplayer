@@ -4,6 +4,7 @@ longmynd:
     binpath: /home/pi/longmynd/longmynd
     mediapath: /home/pi/lmmedia
     statuspath: /home/pi/lmstatus
+    tstimeout: 5000
 
 bands:
     None:
@@ -12,7 +13,6 @@ bands:
     LNB Low: &bandlnblow
         frequency: 9750000
         polarity: MINUS
-
 
 default:
     freq: 10491500

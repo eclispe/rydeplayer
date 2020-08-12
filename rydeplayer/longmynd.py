@@ -309,11 +309,12 @@ class tunerConfig(rydeplayer.common.validTracker):
         return output
 
 class lmManager(object):
-    def __init__(self, config, lmpath, mediaFIFOpath, statusFIFOpath):
+    def __init__(self, config, lmpath, mediaFIFOpath, statusFIFOpath, tsTimeout):
         # path to the longmynd binary
         self.lmpath = lmpath
         self.mediaFIFOfilename = mediaFIFOpath
         self.statusFIFOfilename = statusFIFOpath
+        self.tsTimeout = tsTimeout
         #TODO: add error handling here
         if(not os.path.exists(self.mediaFIFOfilename)):
             os.mkfifo(self.mediaFIFOfilename)
@@ -549,7 +550,7 @@ class lmManager(object):
                 self.statusrecv = False
                 self.statelog=[]
                 self.lmlog=[]
-                args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename]
+                args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename, '-r', str(self.tsTimeout)]
                 if self.activeConfig.port == inPortEnum.BOTTOM:
                     args.append('-w')
                 if self.activeConfig.pol == PolarityEnum.HORIZONTAL:

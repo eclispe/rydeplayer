@@ -133,6 +133,7 @@ class rydeConfig(object):
             'binpath': '/home/pi/longmynd/longmynd',
             'mediapath': '/home/pi/lmmedia',
             'statuspath': '/home/pi/lmstatus',
+            'tstimeout': 5000,
             })
         self.bands = {}
         defaultBand = longmynd.tunerBand()
@@ -203,6 +204,12 @@ class rydeConfig(object):
                         else:
                             print("Invalid longymnd status FIFO path")
                             perfectConfig = False
+                    if 'tstimeout' in config['longmynd']:
+                        if isinstance(config['longmynd']['tstimeout'], int):
+                            self.longmynd.tstimeout = config['longmynd']['tstimeout']
+                        else:
+                            print("Invalid longmynd TS timeout")
+                            perfectConfig = False
                 else:
                     print("Invalid longmynd config")
                     perfectConfig = False
@@ -266,7 +273,7 @@ class player(object):
         print(pygame.font.get_fonts())
 
         # setup longmynd
-        self.lmMan = longmynd.lmManager(self.config.tuner, self.config.longmynd.binpath, self.config.longmynd.mediapath, self.config.longmynd.statuspath)
+        self.lmMan = longmynd.lmManager(self.config.tuner, self.config.longmynd.binpath, self.config.longmynd.mediapath, self.config.longmynd.statuspath, self.config.longmynd.tstimeout)
         self.config.tuner.setCallbackFunction(self.lmMan.reconfig)
 
         self.vlcStartup()

@@ -22,6 +22,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * ```binpath``` path to the Longmynd binary.
   * ```mediapath``` path to Longmynd's media FIFO, this will be auto-created if it doesn't exist.
   * ```statuspath``` path to Longmynd's status FIFO, this will be auto-created if it doesn't exist.
+  * ```tstimeout``` TS timeout in ms, passed to longmynd with ```-r```, see longmynd manual for more details.
 * ```bands```
   * Name of the band, you may have to put it in double quotes ```"``` if you want to use names with various caracters such as ```:``` in it. It is recommended that you add an anchor if you need to reference the band later, e.g. ```"LNB Low": &bandlnblow```
     * ```frequency``` IF frequency value in kHz
