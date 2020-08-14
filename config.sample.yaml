@@ -8,11 +8,11 @@ longmynd:
 
 bands:
     None:
-        frequency: 0
-        polarity: PLUS
+        lofreq: 0
+        loside: HIGH
     LNB Low: &bandlnblow
-        frequency: 9750000
-        polarity: MINUS
+        lofreq: 9750000
+        loside: LOW
 
 default:
     freq: 10491500

@@ -26,18 +26,19 @@ class PolarityEnum(enum.Enum):
     HORIZONTAL = enum.auto()
     VERTICAL = enum.auto()
 
-class IFOffsetPolarityEnum(enum.Enum):
-    PLUS = enum.auto()
-    MINUS = enum.auto()
+class LOOffsetSideEnum(enum.Enum):
+    HIGH = enum.auto()
+    LOW = enum.auto()
 
 class tunerBand(object):
     def __init__(self):
         self.freq = 0
-        self.polarity = IFOffsetPolarityEnum.MINUS
+        self.loside = LOOffsetSideEnum.LOW
 
-    def setBand(self, freq, polarity):
+
+    def setBand(self, freq, loside):
         self.freq = freq
-        self.polarity = polarity
+        self.loside = loside
 
     def loadBand(self, config):
         configUpdated = False
@@ -46,41 +47,41 @@ class tunerBand(object):
             print("Band invalid, skipping")
             perfectConfig = False
         else:
-            # check frequency and polarity, both must be valid for either to be updated
-            if 'frequency' in config:
-                if isinstance(config['frequency'], int):
-                    # frequency is valid, check polarity
-                    if 'polarity' in config:
-                        if isinstance(config['polarity'], str):
-                            for polopt in IFOffsetPolarityEnum:
-                                if polopt.name == config['polarity'].upper():
-                                    self.polarity = polopt
-                                    self.freq = config['frequency']
+            # check lo frequency and side, both must be valid for either to be updated
+            if 'lofreq' in config:
+                if isinstance(config['lofreq'], int):
+                    # lo frequency is valid, check side
+                    if 'loside' in config:
+                        if isinstance(config['loside'], str):
+                            for losideopt in LOOffsetSideEnum:
+                                if losideopt.name == config['loside'].upper():
+                                    self.loside = losideopt
+                                    self.freq = config['lofreq']
                                     configUpdated = True
                                     break
                         if not configUpdated:
-                            print("Band IF polarity invalid, skipping frequency and polarity")
+                            print("Band LO side invalid, skipping frequency and LO side")
                             perfectConfig = False
                     else:
-                        print("Symbol rate missing, skipping frequency and symbol rate")
+                        print("Band LO side missing, skipping frequency and LO side")
                         perfectConfig = False
                 else:
-                    print("Frequency config invalid, skipping frequency and symbol rate")
+                    print("LO frequency config invalid, skipping frequency and symbol rate")
                     perfectConfig = False
             else:
-                print("Frequency config missing, skipping frequency and symbol rate")
+                print("LO frequency config missing, skipping frequency and symbol rate")
                 perfectConfig = False
         return perfectConfig
 
     def getFrequency(self):
         return self.freq
 
-    def getPolarity(self):
-        return self.polarity
+    def getLOSide(self):
+        return self.loside
 
     # return tuner frequency from requested frequency
     def mapReqToTune(self, freq):
-        if self.polarity == IFOffsetPolarityEnum.MINUS:
+        if self.loside == LOOffsetSideEnum.LOW:
             if freq > self.freq:
                 return freq - self.freq
             else:
@@ -91,7 +92,7 @@ class tunerBand(object):
 
     # return request frequency from tuner frequeny
     def mapTuneToReq(self, freq):
-        if self.polarity == IFOffsetPolarityEnum.PLUS:
+        if self.loside == LOOffsetSideEnum.HIGH:
             if freq > self.freq:
                 return freq - self.freq
             else:
@@ -101,7 +102,7 @@ class tunerBand(object):
     
     def getOffsetStr(self):
         output = ""
-        if self.polarity == IFOffsetPolarityEnum.PLUS:
+        if self.loside == LOOffsetSideEnum.HIGH:
             output += "+"
         else:
             output += "-"
@@ -113,10 +114,10 @@ class tunerBand(object):
         if not isinstance(other,tunerBand):
             return NotImplemented
         else:
-            return self.freq == other.freq and self.polarity == other.polarity
+            return self.freq == other.freq and self.loside == other.loside
     
     def __hash__(self):
-        return hash((self.freq, self.polarity))
+        return hash((self.freq, self.loside))
 
 class tunerConfigInt(rydeplayer.common.validTracker):
     def __init__(self, value, minval, maxval):
@@ -152,7 +153,7 @@ class tunerConfig(rydeplayer.common.validTracker):
         # default is QO-100 Beacon
         self.updateCallback = None # function that is called when the config changes
         self.band = tunerBand()
-        self.band.setBand(0, IFOffsetPolarityEnum.MINUS)
+        self.band.setBand(0, LOOffsetSideEnum.LOW)
         self.tunerMinFreq = 144000
         self.tunerMaxFreq = 2450000
         defaultfreq = 741500
