@@ -173,7 +173,7 @@ class rydeConfig(object):
                             # dedupe band object with exsisting library
                             if bandObject in exsistingBands:
                                 bandObject = exsistingBands[exsistingBands.index(bandObject)]
-                            newBands[bandObject] = bandName
+                            newBands[bandObject] = str(bandName)
                     if len(newBands) > 1:
                         self.bands = newBands
                     else:
