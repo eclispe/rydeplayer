@@ -67,9 +67,9 @@ class guiState(rydeplayer.states.gui.SuperStates):
     def startup(self, config, debugFunctions):
         # main menu states, order is important to get menus and sub menus to display in the right place
         mainMenuStates = {
-            'freq-sel' : rydeplayer.states.gui.NumberSelect(self.theme, 'freq', 'KHz', config.tuner.freq, config.tuner.setFrequency),
+            'freq-sel' : rydeplayer.states.gui.NumberSelect(self.theme, 'freq', 'kHz', config.tuner.freq, config.tuner.setFrequency),
             'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "port", "sr", "freq-sel", config.tuner.freq),
-            'sr-sel'   : rydeplayer.states.gui.NumberSelect(self.theme, 'sr', 'KSPS', config.tuner.sr, config.tuner.setSymbolRate),
+            'sr-sel'   : rydeplayer.states.gui.NumberSelect(self.theme, 'sr', 'kS', config.tuner.sr, config.tuner.setSymbolRate),
             'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "band", "sr-sel", config.tuner.sr),
             'band-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'band', config.bands, config.tuner.band, config.tuner.setBand),
             'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "pol", "band-sel"),
