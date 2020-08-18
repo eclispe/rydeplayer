@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import enum, os, stat, subprocess, pty, select, copy, fcntl
+import enum, os, stat, subprocess, pty, select, copy, fcntl, collections
 import rydeplayer.common
 
 class inPortEnum(enum.Enum):
@@ -119,6 +119,7 @@ class tunerBand(object):
     def __hash__(self):
         return hash((self.freq, self.loside))
 
+# Stores the a tuner integer and its limits
 class tunerConfigInt(rydeplayer.common.validTracker):
     def __init__(self, value, minval, maxval):
         self.value = value
@@ -146,7 +147,94 @@ class tunerConfigInt(rydeplayer.common.validTracker):
 
     def getMaxValue(self):
         return self.maxval
-        
+
+    def __str__(self):
+        return str(self.value)
+
+# Stores a list of tuner integers which share limits
+class tunerConfigIntList(rydeplayer.common.validTracker):
+    def __init__(self, value, minval, maxval, single):
+        initialConfig = tunerConfigInt(value, minval, maxval)
+        initialConfig.addValidCallback(self.checkValid)
+        # List must never be empty
+        self.values = [initialConfig]
+        self.minval = minval
+        self.maxval = maxval
+        self.single = single
+        # Initalise valid tracker with current valid status
+        super().__init__(self.values[0].isValid())
+   
+    def append(self, newval):
+        newConfig = tunerConfigInt(newval, self.minval, self.maxval)
+        newConfig.addValidCallback(self.checkValid)
+        self.values.append(newConfig)
+        self.single=False
+        self.checkValid()
+
+    def setLimits(self, newMin, newMax):
+        if self.minval != newMin or self.maxval != newMax:
+            self.minval = newMin
+            self.maxval = newMax
+            self.checkValid()
+
+    def checkValid(self):
+        newValid = True
+        for element in self.values:
+            newValid = newValid and element.isValid()
+        self.updateValid(newValid)
+
+    # does this list enforce 1 value only
+    def isSingle(self):
+        return self.single
+
+    # change single value enforcement
+    def setSingle(self, newSingle):
+        self.single=newSingle
+        if self.single:
+            del(self.values[1:])
+
+    # set to single value only and set that value
+    def setSingleValue(self, newVal):
+        self.setSingle(True)
+        self.values[0].setValue(newVal)
+        self.checkValid()
+
+    def getMinValue(self):
+        return self.minval
+
+    def getMaxValue(self):
+        return self.maxval
+
+    def getValues(self):
+        values = []
+        for valueOb in self.values:
+            values.append(valueOb.getValue())
+        return values
+
+    # produce a deep copy of the list
+    def copyConfig(self):
+        newConfig=tunerConfigIntList(self.values[0].getValue(), self.values[0].getMinValue(), self.values[0].getMaxValue(), self.single)
+        for valueOb in self.values[1:]:
+            newConfig.append(valueOb.getValue())
+        return newConfig
+
+    def __len__(self):
+        return len(self.values)
+
+    def __getitem__(self, n):
+        return self.values[n]
+
+    def __delitem__(self, n):
+        if len(self.values) > 1:
+            del(self.values[n])
+        else:
+            raise KeyError("Can't remove only item in list")
+
+    def __str__(self):
+        outstrs = []
+        for valueOb in self.values:
+            outstrs.append(str(valueOb.getValue))
+        return ", ".join(outstrs)
 
 class tunerConfig(rydeplayer.common.validTracker):
     def __init__(self):
@@ -159,14 +247,14 @@ class tunerConfig(rydeplayer.common.validTracker):
         defaultfreq = 741500
         self.freq = tunerConfigInt(defaultfreq, self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         self.freq.addValidCallback(self.updateValid)
-        self.sr = tunerConfigInt(1500, 33, 27500)
+        self.sr = tunerConfigIntList(1500, 33, 27500, True)
         self.sr.addValidCallback(self.updateValid)
-        self.setConfig(defaultfreq, 1500, PolarityEnum.NONE, inPortEnum.TOP, self.band)
+        self.setConfig(defaultfreq, self.sr , PolarityEnum.NONE, inPortEnum.TOP, self.band)
         super().__init__(self.calcValid())
 
     def setConfig(self, freq, sr, pol, port, band):
         self.freq.setValue(freq)
-        self.sr.setValue(sr)
+        self.sr = sr
         self.pol = pol
         self.port = port
         self.band = band
@@ -181,26 +269,56 @@ class tunerConfig(rydeplayer.common.validTracker):
             perfectConfig = False
         else:
             # check frequency and symbol rate, both must be valid for either to be updated
+            newFreq = None
+            newSR = None
             if 'freq' in config:
                 if isinstance(config['freq'], int):
-                    # frequency is valid, check symbol rate
-                    if 'sr' in config:
-                        if isinstance(config['sr'], int):
-                            self.freq.setValue(config['freq'])
-                            self.sr.setValue(config['sr'])
-                            configUpdated = True
-                        else:
-                            print("Symbol rate config invalid, skipping frequency and symbol rate")
-                            perfectConfig = False
-                    else:
-                        print("Symbol rate missing, skipping frequency and symbol rate")
-                        perfectConfig = False
+                    newFreq = config['freq']
                 else:
                     print("Frequency config invalid, skipping frequency and symbol rate")
                     perfectConfig = False
             else:
                 print("Frequency config missing, skipping frequency and symbol rate")
                 perfectConfig = False
+            if 'sr' in config:
+                if isinstance(config['sr'], int):
+                    newSR = config['sr']
+                elif isinstance(config['sr'], list):
+                    proposedSRs = []
+                    for propSR in config['sr']:
+                        if isinstance(propSR, int):
+                            proposedSRs.append(propSR)
+                        else:
+                            print("Some symbol rates are invalid")
+                            perfectConfig = False
+                    if len(proposedSRs) >0:
+                        newSR = proposedSRs
+                    else:
+                        print("No valid symbol rates provided, skipping frequency and symbol rate")
+                        perfectConfig = False
+                else:
+                    print("Symbol rate config invalid, skipping frequency and symbol rate")
+                    perfectConfig = False
+            else:
+                print("Symbol rate missing, skipping frequency and symbol rate")
+                perfectConfig = False
+
+            if newFreq is not None and newSR is not None:
+                self.freq.setValue(newFreq)
+                if isinstance(newSR, list):
+                   firstSR = True
+                   for thisNewSR in newSR:
+                       if firstSR:
+                           firstSR = False
+                           self.sr.setSingleValue(thisNewSR)
+                           self.sr.setSingle(False)
+                       else:
+                           self.sr.append(thisNewSR)
+                else:
+                    self.sr.setSingleValue(newSR)
+                configUpdated = True
+            else:
+                print("Symbol rate and/or frequency were invalid, skipping both")
 
             if 'band' in config:
                 bandObject = tunerBand()
@@ -261,8 +379,17 @@ class tunerConfig(rydeplayer.common.validTracker):
     def setFrequency(self, newFreq):
         self.freq.setValue(newFreq)
         self.runCallback()
-    def setSymbolRate(self, newSr):
-        self.sr.setValue(newSr)
+    def setSymbolRates(self, newSr):
+        if isinstance(newSr, collections.abc.Iterable):
+           firstSr = True
+           for thisNewSr in newSr:
+               if firstSr:
+                   firstSr = False
+                   self.sr.setSingleValue(thisNewSr)
+               else:
+                   self.sr.append(thisNewSr)
+        else:
+            self.sr.setSingleValue(newSr)
         self.runCallback()
     def setPolarity(self, newPol):
         self.pol = newPol
@@ -292,19 +419,19 @@ class tunerConfig(rydeplayer.common.validTracker):
     def copyConfig(self):
         # return a copy of the config details but with no callback connected
         newConfig = tunerConfig()
-        newConfig.setConfig(self.freq.getValue(), self.sr.getValue(), self.pol, self.port, self.band)
+        newConfig.setConfig(self.freq.getValue(), self.sr.copyConfig(), self.pol, self.port, self.band)
         return newConfig
     def __eq__(self,other):
         # compare 2 configs ignores the callback
         if not isinstance(other,tunerConfig):
             return NotImplemented
         else:
-            return self.freq.getValue() == other.freq.getValue() and self.sr.getValue() == other.sr.getValue() and self.pol == other.pol and self.port ==other.port and self.band == other.band
+            return self.freq.getValue() == other.freq.getValue() and set(self.sr.getValues()) == set(other.sr.getValues()) and self.pol == other.pol and self.port ==other.port and self.band == other.band
     def __str__(self):
         output = ""
         output += "Request Frequency: "+str(self.freq.getValue())+"\n"
         output += "        IF offset: "+self.band.getOffsetStr()+"\n"
-        output += "      Symbol Rate: "+str(self.sr.getValue())+"\n"
+        output += "      Symbol Rate: "+str(self.sr)+"\n"
         output += "         Polarity: "+str(self.pol)+"\n"
         output += "             Port: "+str(self.port)
         return output
@@ -558,8 +685,14 @@ class lmManager(object):
                     args.extend(['-p', 'h'])
                 elif self.activeConfig.pol == PolarityEnum.VERTICAL:
                     args.extend(['-p', 'v'])
+                
+                # generate symbol rate scan string
+                srStrings = []
+                for srVal in self.activeConfig.sr:
+                    srStrings.append(str(srVal.getValue()))
+
                 args.append(str(self.activeConfig.band.mapReqToTune(self.activeConfig.freq.getValue())))
-                args.append(str(self.activeConfig.sr.getValue()))
+                args.append(",".join(srStrings))
                 self.process = subprocess.Popen(args, stdout=self.stdoutWritefd, stderr=subprocess.STDOUT, bufsize=0)
             else:
                 print("LM already running")
