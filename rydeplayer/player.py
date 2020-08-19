@@ -95,8 +95,8 @@ class guiState(rydeplayer.states.gui.SuperStates):
             'home': Home(self.theme)
         }
         # add callback to rederaw menu item if tuner data is updated
-        config.tuner.freq.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['freq']))
-        config.tuner.sr.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['sr']))
+        config.tuner.freq.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['freq'], mainMenuStates['freq'].getSurfaceRects()))
+        config.tuner.sr.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['sr'], mainMenuStates['sr'].getSurfaceRects()))
         self.state_name = "home"
         self.state = self.state_dict[self.state_name]
         self.state.startup()
