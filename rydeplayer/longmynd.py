@@ -148,6 +148,9 @@ class tunerConfigInt(rydeplayer.common.validTracker):
     def getMaxValue(self):
         return self.maxval
 
+    def copyConfig(self):
+        return tunerConfigInt(self.value, self.minval, self.maxval)
+
     def __str__(self):
         return str(self.value)
 

@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import pygame, math, enum, pydispmanx
+import pygame, math, enum, pydispmanx, functools
 from PIL import Image
 from ..common import navEvent
 
@@ -553,8 +553,11 @@ class MultipleNumberSelect(SuperStatesSurface):
             # work out what size all the list items have to be before creating them
             maxitemwidth = 0
             boxheight = self.theme.menuHeight*0.01
+            menuLabels = []
             for n in range(len(self.valueConfig)):
-                label = self.typetext+" "+str(n)
+                menuLabels.append(self.typetext+" "+str(n))
+            menuLabels.append("New "+self.typetext)
+            for label in menuLabels:
                 maxitemwidth = max(maxitemwidth,self.theme.fonts.menuH1.size(label)[0])
                 rowheight = self.theme.fonts.menuH1.size(label)[1] + self.theme.menuHeight*0.01
                 boxheight += rowheight
@@ -585,6 +588,12 @@ class MultipleNumberSelect(SuperStatesSurface):
                 self.state_dict[self.state_name].up = menuHeadingKey
                 prevState = menuHeadingKey
                 valueCounter += 1
+            newValuePlaceholder = self.valueConfig[0].copyConfig()
+            self.state_dict[('new', 'item')] = NumberSelect(self.theme, ('new', 'menu'), self.unittext, newValuePlaceholder, functools.partial(self.addValue, newValuePlaceholder))
+            self.state_dict[('new', 'menu')] = SubMenuItem(self.theme, "New "+self.typetext, prevState, self.state_name, ('new', 'item'), boxwidth, None)
+            self.state_dict[prevState].down = ('new', 'menu')
+            self.state_dict[self.state_name].up = ('new', 'menu')
+
             drawnext = self.theme.menuHeight*0.01
 
         # align the menu items and sub items
@@ -599,6 +608,11 @@ class MultipleNumberSelect(SuperStatesSurface):
                 drawnext = menuState.surfacerect.bottom + self.theme.menuHeight*0.01
                 self.surface.blit(menuState.get_surface(), menuState.surfacerect)
         self.state.startup()
+
+    def addValue(self, newValueConfig):
+        self.valueConfig.append(newValueConfig.getValue())
+        self.updateCallback()
+        self.done = True
 
     def getSurfaceRects(self):
         # if its a sub menu return the rectangles for it to the parent for painting
