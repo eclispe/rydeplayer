@@ -573,10 +573,13 @@ class MultipleNumberSelect(SuperStatesSurface):
             prevState = None
             for thisVal in self.valueConfig:
                 menuHeadingKey = (thisVal, 'menu')
+                menuItemKey = (thisVal, 'item')
                 if self.state_name is None:
                     self.state_name = menuHeadingKey
                     prevState = menuHeadingKey
-                menuHeading = SubMenuItem(self.theme, self.typetext+" "+str(valueCounter), prevState, self.state_name, menuHeadingKey, boxwidth, None)
+                menuItem = NumberSelect(self.theme, menuHeadingKey, self.unittext, thisVal, self.updateCallback)
+                menuHeading = SubMenuItem(self.theme, self.typetext+" "+str(valueCounter), prevState, self.state_name, menuItemKey, boxwidth, thisVal)
+                self.state_dict[menuItemKey] = menuItem
                 self.state_dict[menuHeadingKey] = menuHeading
                 self.state_dict[prevState].down = menuHeadingKey
                 self.state_dict[self.state_name].up = menuHeadingKey
