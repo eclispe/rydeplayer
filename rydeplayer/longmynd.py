@@ -178,6 +178,8 @@ class tunerConfigIntList(rydeplayer.common.validTracker):
         if self.minval != newMin or self.maxval != newMax:
             self.minval = newMin
             self.maxval = newMax
+            for element in self.values:
+                element.setLimits(newMin, newMax)
             self.checkValid()
 
     def checkValid(self):
@@ -195,6 +197,7 @@ class tunerConfigIntList(rydeplayer.common.validTracker):
         self.single=newSingle
         if self.single:
             del(self.values[1:])
+        self.checkValid()
 
     # set to single value only and set that value
     def setSingleValue(self, newVal):
@@ -229,14 +232,16 @@ class tunerConfigIntList(rydeplayer.common.validTracker):
 
     def __delitem__(self, n):
         if len(self.values) > 1:
+            self.values[n].removeValidCallback(self.checkValid)
             del(self.values[n])
+            self.checkValid()
         else:
             raise KeyError("Can't remove only item in list")
 
     def __str__(self):
         outstrs = []
         for valueOb in self.values:
-            outstrs.append(str(valueOb.getValue))
+            outstrs.append(str(valueOb.getValue()))
         return ", ".join(outstrs)
 
 class tunerConfig(rydeplayer.common.validTracker):
@@ -252,16 +257,19 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.freq.addValidCallback(self.updateValid)
         self.sr = tunerConfigIntList(1500, 33, 27500, True)
         self.sr.addValidCallback(self.updateValid)
-        self.setConfig(defaultfreq, self.sr , PolarityEnum.NONE, inPortEnum.TOP, self.band)
         super().__init__(self.calcValid())
+        self.setConfig(defaultfreq, self.sr , PolarityEnum.NONE, inPortEnum.TOP, self.band)
 
     def setConfig(self, freq, sr, pol, port, band):
         self.freq.setValue(freq)
+        self.sr.removeValidCallback(self.updateValid)
+        sr.addValidCallback(self.updateValid)
         self.sr = sr
         self.pol = pol
         self.port = port
         self.band = band
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        self.updateValid()
         self.runCallback()
 
     def loadConfig(self, config, bandLibrary = []):
