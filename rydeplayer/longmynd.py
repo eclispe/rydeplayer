@@ -253,15 +253,17 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.tunerMinFreq = 144000
         self.tunerMaxFreq = 2450000
         defaultfreq = 741500
-        self.freq = tunerConfigInt(defaultfreq, self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        self.freq = tunerConfigIntList(defaultfreq, self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq), True)
         self.freq.addValidCallback(self.updateValid)
         self.sr = tunerConfigIntList(1500, 33, 27500, True)
         self.sr.addValidCallback(self.updateValid)
         super().__init__(self.calcValid())
-        self.setConfig(defaultfreq, self.sr , PolarityEnum.NONE, inPortEnum.TOP, self.band)
+        self.setConfig(self.freq, self.sr , PolarityEnum.NONE, inPortEnum.TOP, self.band)
 
     def setConfig(self, freq, sr, pol, port, band):
-        self.freq.setValue(freq)
+        self.freq.removeValidCallback(self.updateValid)
+        freq.addValidCallback(self.updateValid)
+        self.freq = freq
         self.sr.removeValidCallback(self.updateValid)
         sr.addValidCallback(self.updateValid)
         self.sr = sr
@@ -285,6 +287,19 @@ class tunerConfig(rydeplayer.common.validTracker):
             if 'freq' in config:
                 if isinstance(config['freq'], int):
                     newFreq = config['freq']
+                elif isinstance(config['freq'], list):
+                    proposedFreqs = []
+                    for propFreq in config['freq']:
+                        if isinstance(propFreq, int):
+                            proposedFreqs.append(propFreq)
+                        else:
+                            print("Some frequencies are invalid")
+                            perfectConfig = False
+                    if len(proposedFreqs) >0:
+                        newFreq = proposedFreqs
+                    else:
+                        print("No valid frequencies provided, skipping frequency and symbol rate")
+                        perfectConfig = False
                 else:
                     print("Frequency config invalid, skipping frequency and symbol rate")
                     perfectConfig = False
@@ -315,7 +330,17 @@ class tunerConfig(rydeplayer.common.validTracker):
                 perfectConfig = False
 
             if newFreq is not None and newSR is not None:
-                self.freq.setValue(newFreq)
+                if isinstance(newFreq, list):
+                   firstFreq = True
+                   for thisNewFreq in newFreq:
+                       if firstFreq:
+                           firstFreq = False
+                           self.freq.setSingleValue(thisNewFreq)
+                           self.freq.setSingle(False)
+                       else:
+                           self.freq.append(thisNewFreq)
+                else:
+                    self.freq.setSingleValue(newFreq)
                 if isinstance(newSR, list):
                    firstSR = True
                    for thisNewSR in newSR:
@@ -387,9 +412,19 @@ class tunerConfig(rydeplayer.common.validTracker):
             self.runCallback()
         return perfectConfig
 
-    def setFrequency(self, newFreq):
-        self.freq.setValue(newFreq)
+    def setFrequencies(self, newFreq):
+        if isinstance(newFreq, collections.abc.Iterable):
+           firstFreq = True
+           for thisNewFreq in newFreq:
+               if firstFreq:
+                   firstFreq = False
+                   self.freq.setSingleValue(thisNewFreq)
+               else:
+                   self.freq.append(thisNewFreq)
+        else:
+            self.freq.setSingleValue(newFreq)
         self.runCallback()
+
     def setSymbolRates(self, newSr):
         if isinstance(newSr, collections.abc.Iterable):
            firstSr = True
@@ -430,17 +465,17 @@ class tunerConfig(rydeplayer.common.validTracker):
     def copyConfig(self):
         # return a copy of the config details but with no callback connected
         newConfig = tunerConfig()
-        newConfig.setConfig(self.freq.getValue(), self.sr.copyConfig(), self.pol, self.port, self.band)
+        newConfig.setConfig(self.freq.copyConfig(), self.sr.copyConfig(), self.pol, self.port, self.band)
         return newConfig
     def __eq__(self,other):
         # compare 2 configs ignores the callback
         if not isinstance(other,tunerConfig):
             return NotImplemented
         else:
-            return self.freq.getValue() == other.freq.getValue() and set(self.sr.getValues()) == set(other.sr.getValues()) and self.pol == other.pol and self.port ==other.port and self.band == other.band
+            return set(self.freq.getValues()) == set(other.freq.getValues()) and set(self.sr.getValues()) == set(other.sr.getValues()) and self.pol == other.pol and self.port ==other.port and self.band == other.band
     def __str__(self):
         output = ""
-        output += "Request Frequency: "+str(self.freq.getValue())+"\n"
+        output += "Request Frequency: "+str(self.freq)+"\n"
         output += "        IF offset: "+self.band.getOffsetStr()+"\n"
         output += "      Symbol Rate: "+str(self.sr)+"\n"
         output += "         Polarity: "+str(self.pol)+"\n"
@@ -697,12 +732,17 @@ class lmManager(object):
                 elif self.activeConfig.pol == PolarityEnum.VERTICAL:
                     args.extend(['-p', 'v'])
                 
+                # generate frequency scan string
+                freqStrings = []
+                for freqVal in self.activeConfig.freq:
+                    freqStrings.append(str(self.activeConfig.band.mapReqToTune(freqVal.getValue())))
+
                 # generate symbol rate scan string
                 srStrings = []
                 for srVal in self.activeConfig.sr:
                     srStrings.append(str(srVal.getValue()))
 
-                args.append(str(self.activeConfig.band.mapReqToTune(self.activeConfig.freq.getValue())))
+                args.append(",".join(freqStrings))
                 args.append(",".join(srStrings))
                 self.process = subprocess.Popen(args, stdout=self.stdoutWritefd, stderr=subprocess.STDOUT, bufsize=0)
             else:
