@@ -557,6 +557,8 @@ class MultipleNumberSelect(SuperStatesSurface):
             for n in range(len(self.valueConfig)):
                 menuLabels.append(self.typetext+" "+str(n))
             menuLabels.append("New "+self.typetext)
+            if len(self.valueConfig) > 1:
+                menuLabels.append("Delete "+self.typetext)
             for label in menuLabels:
                 maxitemwidth = max(maxitemwidth,self.theme.fonts.menuH1.size(label)[0])
                 rowheight = self.theme.fonts.menuH1.size(label)[1] + self.theme.menuHeight*0.01
@@ -574,6 +576,7 @@ class MultipleNumberSelect(SuperStatesSurface):
             self.state_name = None
             valueCounter = 0
             prevState = None
+            # setup edit buttons
             for thisVal in self.valueConfig:
                 menuHeadingKey = (thisVal, 'menu')
                 menuItemKey = (thisVal, 'item')
@@ -588,11 +591,22 @@ class MultipleNumberSelect(SuperStatesSurface):
                 self.state_dict[self.state_name].up = menuHeadingKey
                 prevState = menuHeadingKey
                 valueCounter += 1
+            # setup add button
             newValuePlaceholder = self.valueConfig[0].copyConfig()
             self.state_dict[('new', 'item')] = NumberSelect(self.theme, ('new', 'menu'), self.unittext, newValuePlaceholder, functools.partial(self.addValue, newValuePlaceholder))
             self.state_dict[('new', 'menu')] = SubMenuItem(self.theme, "New "+self.typetext, prevState, self.state_name, ('new', 'item'), boxwidth, None)
             self.state_dict[prevState].down = ('new', 'menu')
-            self.state_dict[self.state_name].up = ('new', 'menu')
+            # setup delete button
+            if len(self.valueConfig) > 1:
+                valDict = {}
+                for n in range(len(self.valueConfig)):
+                    valDict[n] = self.typetext+" "+str(n)+": "+ str(self.valueConfig[n].getValue())+self.unittext
+                self.state_dict[('del', 'item')] = ListSelect(self.theme, ('del', 'menu'), valDict, 0, self.deleteValue) 
+                self.state_dict[('del', 'menu')] = SubMenuItem(self.theme, "Delete "+self.typetext, ('new', 'menu'), self.state_name, ('del', 'item'), boxwidth, None)
+                self.state_dict[self.state_name].up = ('del', 'menu')
+                self.state_dict[('new', 'menu')].down = ('del', 'menu')
+            else:
+                self.state_dict[self.state_name].up = ('new', 'menu')
 
             drawnext = self.theme.menuHeight*0.01
 
@@ -602,6 +616,9 @@ class MultipleNumberSelect(SuperStatesSurface):
             if(isinstance(menuState, NumberSelect)):
                 menuState.top = drawnext+self.top
                 menuState.left = itemleft
+            elif(isinstance(menuState, ListSelect)):
+                menuState.surfacerect.top = drawnext+self.top
+                menuState.surfacerect.left = itemleft
             elif(isinstance(menuState, SubMenuItem)):
                 menuState.surfacerect.top = drawnext
                 menuState.surfacerect.left = 0
@@ -611,6 +628,11 @@ class MultipleNumberSelect(SuperStatesSurface):
 
     def addValue(self, newValueConfig):
         self.valueConfig.append(newValueConfig.getValue())
+        self.updateCallback()
+        self.done = True
+
+    def deleteValue(self, deleteIndex):
+        del(self.valueConfig[deleteIndex])
         self.updateCallback()
         self.done = True
 
