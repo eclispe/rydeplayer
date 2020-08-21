@@ -17,8 +17,15 @@ bands:
 default:
     freq: 10491500
     sr:   1500
-#    freq: 10499250
-#    sr:   333
+#    freq:
+#      - 10497750
+#      - 10498250
+#      - 10498750
+#      - 10499250
+#    sr:
+#      - 250
+#      - 333
+#      - 500
     band: *bandlnblow
     pol:  NONE
     port: TOP

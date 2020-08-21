@@ -28,9 +28,9 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
     * ```lofreq``` LO frequency value in kHz
     * ```loside``` Select either ```HIGH``` or ```LOW``` depending on if the IF is above or below the LO frequency respectively
 * ```default```
-  * ```freq``` Initial frequency to tune to on startup
+  * ```freq``` Initial frequency to tune to on startup, this can either be a single frequency or a list of frequencies to enable frequency scanning
   * ```band``` Initial band, its recommended to use an alias to the band in the band library, e.g. ```band: *bandlnblow```
-  * ```sr``` Initial symbol rate in kSps
+  * ```sr``` Initial symbol rate in kSps, this can either be a single symbol rate or a list of symbol rates to enable symbol rate scanning
   * ```pol``` Initial polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```
   * ```port``` Initial inpuit port. Choose from ```TOP``` or ```BOTTOM```
 * ```ir``` This section defines the IR handset behaviour.
