@@ -67,10 +67,13 @@ class SuperStatesSurface(SuperStates, StatesSurface):
         self.surface.blits(state.getBlitPairs())
     def update(self):
         oldstate = self.state
-        oldrects = oldstate.getSurfaceRects()
+        if isinstance(oldstate, StatesSurface):
+            oldrects = oldstate.getSurfaceRects()
         super().update()
-        self.redrawState(oldstate, oldrects)
-        self.redrawState(self.state, self.state.getSurfaceRects())
+        if isinstance(oldstate, StatesSurface):
+            self.redrawState(oldstate, oldrects)
+        if isinstance(self.state, StatesSurface):
+            self.redrawState(self.state, self.state.getSurfaceRects())
 
 # Basic menu item that draws and navigates but nothing else
 class MenuItem(StatesSurface):
@@ -251,15 +254,40 @@ class ListSelectItem(StatesSurface):
                 return True
         return False
 
+# ListSelect item which doesn't draw
+class ListSelectItemNone(States):
+    def __init__(self, theme, up, down):
+        super().__init__(theme)
+        self.next = None
+        self.done = False
+        self.up = up
+        self.down = down
+    def cleanup(self):
+        None
+    def startup(self):
+        None
+    def get_event(self, event):
+        if( event == navEvent.UP):
+            if(self.up != None):
+                self.next=self.up
+                self.done=True
+                return True
+        elif( event == navEvent.DOWN):
+            if(self.down != None):
+                self.next=self.down
+                self.done=True
+                return True
+        return False
+
 # a submenu that allows presents a list of options to be selected and runs a callback when the selection is updated
 class ListSelect(SuperStatesSurface):
-    def __init__(self, theme, backState, items, currentValue, updateCallback):
+    def __init__(self, theme, backState, items, currentValueFunction, updateCallback):
         super().__init__(theme)
         # where to go back to
         self.next = backState
         # dictionary of key:displaytext pairs
         self.items = items
-        self.currentValue = currentValue
+        self.currentValueFunction = currentValueFunction
         self.done = False
         # callback to execute on completion
         self.updateCallback = updateCallback
@@ -277,39 +305,53 @@ class ListSelect(SuperStatesSurface):
         # create the menu items
         self.state_dict = {}
         itemkeys = list(self.items.keys())
+        if len(itemkeys)<1:
+            self.state_dict[None] = ListSelectItemNone(self.theme, None, None)
+        else:
+            self.state_dict[None] = ListSelectItemNone(self.theme, itemkeys[-1], itemkeys[0])
         for n in range(len(itemkeys)):
             key = itemkeys[n]
             value = self.items[key]
             prevkey = itemkeys[n-1]
             nextkey = itemkeys[(n+1)%len(itemkeys)]
             self.state_dict[key] = ListSelectItem(self.theme, value, prevkey, nextkey, boxwidth)
-        self.state_name = currentValue
+        initialvalue = self.currentValueFunction()
+        if initialvalue not in itemkeys:
+            initialvalue = None
+        self.state_name = initialvalue
     def cleanup(self):
         super().cleanup()
-        self.state_name = self.currentValue
         self.surface.fill(self.theme.colours.transparent)
     def startup(self):
+        initialvalue = self.currentValueFunction()
+        if initialvalue not in self.items:
+            initialvalue = None
+        self.state_name = initialvalue
         self.surface.fill(self.theme.colours.backgroundSubMenu)
         self.state = self.state_dict[self.state_name]
+        
         # draw all the items
         drawnext = self.theme.menuHeight*0.01
         for menuState in self.state_dict.values():
-            menuState.surfacerect.top = drawnext
-            menuState.surfacerect.left = 0
-            drawnext = menuState.surfacerect.bottom + self.theme.menuHeight*0.01
-            self.surface.blit(menuState.get_surface(), menuState.surfacerect)
+            if isinstance(menuState, ListSelectItem):
+                menuState.surfacerect.top = drawnext
+                menuState.surfacerect.left = 0
+                drawnext = menuState.surfacerect.bottom + self.theme.menuHeight*0.01
+                self.surface.blit(menuState.get_surface(), menuState.surfacerect)
         # start the default state
         self.state.startup()
-        self.surface.blit(self.state.get_surface(), self.state.surfacerect)
+        if isinstance(self.state, ListSelectItem):
+            self.surface.blit(self.state.get_surface(), self.state.surfacerect)
     def get_event(self, event):
         if(not self.state.get_event(event)):
             if(event == navEvent.BACK or event == navEvent.LEFT):
                 self.done = True
                 return True
             if(event == navEvent.SELECT):
-                self.currentValue = self.state_name
-                if(self.updateCallback is not None):
-                    self.updateCallback(self.state_name)
+#                self.currentValue = self.state_name
+                if(isinstance(self.state, ListSelectItem)):
+                    if(self.updateCallback is not None):
+                        self.updateCallback(self.state_name)
                 self.done = True
                 return True
         return False
@@ -601,7 +643,7 @@ class MultipleNumberSelect(SuperStatesSurface):
                 valDict = {}
                 for n in range(len(self.valueConfig)):
                     valDict[n] = self.typetext+" "+str(n)+": "+ str(self.valueConfig[n].getValue())+self.unittext
-                self.state_dict[('del', 'item')] = ListSelect(self.theme, ('del', 'menu'), valDict, 0, self.deleteValue) 
+                self.state_dict[('del', 'item')] = ListSelect(self.theme, ('del', 'menu'), valDict, lambda:0 , self.deleteValue) 
                 self.state_dict[('del', 'menu')] = SubMenuItem(self.theme, "Delete "+self.typetext, ('new', 'menu'), self.state_name, ('del', 'item'), boxwidth, None)
                 self.state_dict[self.state_name].up = ('del', 'menu')
                 self.state_dict[('new', 'menu')].down = ('del', 'menu')

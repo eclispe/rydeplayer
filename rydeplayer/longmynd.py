@@ -89,7 +89,6 @@ class tunerBand(object):
         else:
             return freq + self.freq
 
-
     # return request frequency from tuner frequeny
     def mapTuneToReq(self, freq):
         if self.loside == LOOffsetSideEnum.HIGH:
@@ -244,6 +243,12 @@ class tunerConfigIntList(rydeplayer.common.validTracker):
             outstrs.append(str(valueOb.getValue()))
         return ", ".join(outstrs)
 
+    def __eq__(self, other):
+        return other.isSingle == self.isSingle and other.getValues() == self.getValues()
+
+    def __hash__(self):
+        return hash((tuple(self.getValues()), self.isSingle()))
+
 class tunerConfig(rydeplayer.common.validTracker):
     def __init__(self):
         # default is QO-100 Beacon
@@ -273,6 +278,13 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         self.updateValid()
         self.runCallback()
+
+    def setConfigToMatch(self, fromConfig):
+        self.setFrequencies(fromConfig.freq.getValues())
+        self.freq.setSingle(fromConfig.freq.isSingle())
+        self.setSymbolRates(fromConfig.sr.getValues())
+        self.sr.setSingle(fromConfig.sr.isSingle())
+        self.setConfig(self.freq, self.sr, fromConfig.getPolarity(), fromConfig.getInputPort(), fromConfig.getBand())
 
     def loadConfig(self, config, bandLibrary = []):
         configUpdated = False
@@ -447,6 +459,12 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.band = newBand
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         self.runCallback()
+    def getPolarity(self):
+        return self.pol
+    def getInputPort(self):
+        return self.port
+    def getBand(self):
+        return self.band
     def setCallbackFunction(self, newCallback):
         self.updateCallback = newCallback
 
@@ -473,6 +491,9 @@ class tunerConfig(rydeplayer.common.validTracker):
             return NotImplemented
         else:
             return set(self.freq.getValues()) == set(other.freq.getValues()) and set(self.sr.getValues()) == set(other.sr.getValues()) and self.pol == other.pol and self.port ==other.port and self.band == other.band
+    def __hash__(self):
+        return hash((self.freq, self.sr, self.pol, self.port, self.band))
+
     def __str__(self):
         output = ""
         output += "Request Frequency: "+str(self.freq)+"\n"

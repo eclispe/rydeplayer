@@ -68,21 +68,23 @@ class guiState(rydeplayer.states.gui.SuperStates):
         # main menu states, order is important to get menus and sub menus to display in the right place
         mainMenuStates = {
             'freq-sel' : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'freq', 'kHz', 'Freq', config.tuner.freq, config.tuner.runCallback),
-            'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "port", "sr", "freq-sel", config.tuner.freq),
+            'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "preset", "sr", "freq-sel", config.tuner.freq),
             'sr-sel'   : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'sr', 'kS', 'SR', config.tuner.sr, config.tuner.runCallback),
             'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "band", "sr-sel", config.tuner.sr),
-            'band-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'band', config.bands, config.tuner.band, config.tuner.setBand),
+            'band-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'band', config.bands, config.tuner.getBand, config.tuner.setBand),
             'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "pol", "band-sel"),
-            'pol-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'pol', {longmynd.PolarityEnum.NONE:'None', longmynd.PolarityEnum.HORIZONTAL:'Horizontal', longmynd.PolarityEnum.VERTICAL:'Vertical'}, config.tuner.pol, config.tuner.setPolarity),
+            'pol-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'pol', {longmynd.PolarityEnum.NONE:'None', longmynd.PolarityEnum.HORIZONTAL:'Horizontal', longmynd.PolarityEnum.VERTICAL:'Vertical'}, config.tuner.getPolarity, config.tuner.setPolarity),
             'pol'      : rydeplayer.states.gui.MenuItem(self.theme, "LNB Polarity", "band", "port", "pol-sel"),
-            'port-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'port', {longmynd.inPortEnum.TOP:'Top', longmynd.inPortEnum.BOTTOM:'Bottom'}, config.tuner.port, config.tuner.setInputPort),
-            'port'     : rydeplayer.states.gui.MenuItem(self.theme, "Input Port", "pol", "freq", "port-sel"),
+            'port-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'port', {longmynd.inPortEnum.TOP:'Top', longmynd.inPortEnum.BOTTOM:'Bottom'}, config.tuner.getInputPort, config.tuner.setInputPort),
+            'port'     : rydeplayer.states.gui.MenuItem(self.theme, "Input Port", "pol", "preset", "port-sel"),
+            'preset-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'preset', config.presets, lambda:config.tuner, config.tuner.setConfigToMatch),
+            'preset'      : rydeplayer.states.gui.MenuItem(self.theme, "Presets", "port", "freq", "preset-sel"),
 #            'autoplay-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'autoplay', {True:'Enabled', False:'Disabled'}, config.debug.autoplay, config.setAutoplay),
 #            'autoplay' : rydeplayer.states.gui.MenuItem(self.theme, "Autoplay", "port", "vlcplay", "autoplay-sel"),
         }
 
         firstkey = 'freq'
-        lastkey = 'port'
+        lastkey = 'preset'
         for key in debugFunctions:
             menukey = key.strip().replace(" ", "").lower()
             mainMenuStates[menukey] = rydeplayer.states.gui.MenuItemFunction(self.theme, key, lastkey, firstkey, debugFunctions[key])
@@ -138,6 +140,7 @@ class rydeConfig(object):
         self.bands = {}
         defaultBand = longmynd.tunerBand()
         self.bands[defaultBand] = "None"
+        self.presets = {}
         self.debug = type('debugConfig', (object,), {
             'autoplay': True,
             'disableHardwareCodec': True,
@@ -174,11 +177,13 @@ class rydeConfig(object):
                             if bandObject in exsistingBands:
                                 bandObject = exsistingBands[exsistingBands.index(bandObject)]
                             newBands[bandObject] = str(bandName)
+                        else:
+                            perfectConfig = False
                     if len(newBands) > 1:
                         self.bands = newBands
                     else:
                         print("No valid bands, skipping")
-
+                        perfectConfig = False
                 else:
                     print("Invalid band library")
                     perfectConfig = False
@@ -213,9 +218,41 @@ class rydeConfig(object):
                 else:
                     print("Invalid longmynd config")
                     perfectConfig = False
+            # parse presets
+            if 'presets' in config:
+                if isinstance(config['presets'], dict):
+                    newPresets = {}
+                    exsistingPresets = list(self.presets.keys())
+                    for presetName in config['presets']:
+                        presetDict = config['presets'][presetName]
+                        presetObject = longmynd.tunerConfig()
+                        if presetObject.loadConfig(presetDict):
+                            # dedupe preset object with exsisting library
+                            if presetObject in exsistingPresets:
+                                presetObject = exsistingPresets[exsistingPresets.index(presetObject)]
+                            newPresets[presetObject] = str(presetName)
+                        else:
+                            perfectConfig = False
+                    if len(newPresets) > 1:
+                        self.presets = newPresets
+                    else:
+                        print("No valid presets, skipping")
+                        perfectConfig = False
+                else:
+                    print("Invalid preset library")
+                    perfectConfig = False
             # pass default tuner config to be parsed by longmynd module
             if 'default' in config:
-                perfectConfig = perfectConfig and self.tuner.loadConfig(config['default'], list(self.bands.keys()))
+                defaultPreset = longmynd.tunerConfig()
+                if defaultPreset.loadConfig(config['default']):
+                    # dedupe preset object with exsisting library
+                    exsistingPresets = list(self.presets.keys())
+                    if defaultPreset in exsistingPresets:
+                        defaultPreset = exsistingPresets[exsistingPresets.index(defaultPreset)]
+                    self.tuner.setConfigToMatch(defaultPreset)
+                else:
+                    perfectConfig = False
+
             # pass ir config to be parsed by the ir config container
             if 'ir' in config:
                 perfectConfig = perfectConfig and self.ir.loadConfig(config['ir'])
