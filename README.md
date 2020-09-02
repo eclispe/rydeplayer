@@ -17,7 +17,7 @@ Install Longmynd. Currently recommending that you use this fork as it has fixes 
 ## Config Files
 A complete sample YAML config file is provided as `config.sample.yaml`, this contains all currently configurable options. If some options are omitted from the config file then internal defaults will be used.
 ### Config file options
-* ```configRev``` The config format revision of this file, if present but wrong the file will not load, if missing file will load with warning. Current revision is 1
+* ```configRev``` The config format revision of this file, if present but wrong the file will not load, if missing file will load with warning. Current revision is 2
 * ```longmynd``` This section defines the paths for your Longmynd installation
   * ```binpath``` path to the Longmynd binary.
   * ```mediapath``` path to Longmynd's media FIFO, this will be auto-created if it doesn't exist.
@@ -27,13 +27,14 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * Name of the band, you may have to put it in double quotes ```"``` if you want to use names with various caracters such as ```:``` in it. It is recommended that you add an anchor if you need to reference the band later, e.g. ```"LNB Low": &bandlnblow```
     * ```lofreq``` LO frequency value in kHz
     * ```loside``` Select either ```HIGH``` or ```LOW``` depending on if the IF is above or below the LO frequency respectively
+    * ```pol``` Band polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```
+    * ```port``` Band input port. Choose from ```TOP``` or ```BOTTOM```
 * ```presets```
   * Name of the preset, following the same naming rules as for bands above. It is also recommended you add an anchor to a preset to use as the default also similar to bands above, e.g. ```"QO-100 Beacon": &presetdefault```
     * ```freq``` Preset frequency to tune, this can either be a single frequency or a list of frequencies to enable frequency scanning
     * ```band``` Preset band, its recommended to use an alias to a band in the band library, e.g. ```band: *bandlnblow```
     * ```sr``` Preset symbol rate in kSps, this can either be a single symbol rate or a list of symbol rates to enable symbol rate scanning
-    * ```pol``` Preset polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```
-    * ```port``` Preset input port. Choose from ```TOP``` or ```BOTTOM```
+
 * ```default```
   * Initial settings, its recommended to use an alias to a preset in the preset library, e.g. ```default: *presetdefault```
 * ```ir``` This section defines the IR handset behaviour.

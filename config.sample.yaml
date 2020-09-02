@@ -1,5 +1,5 @@
 ---
-configRev: 1
+configRev: 2
 longmynd:
     binpath: /home/pi/longmynd/longmynd
     mediapath: /home/pi/lmmedia
@@ -10,17 +10,19 @@ bands:
     None:
         lofreq: 0
         loside: HIGH
+        pol:  NONE
+        port: TOP
     LNB Low: &bandlnblow
         lofreq: 9750000
         loside: LOW
+        pol:  HORIZONTAL
+        port: TOP
 
 presets:
     QO-100 Beacon: &presetdefault
         freq: 10491500
         sr:   1500
         band: *bandlnblow
-        pol:  HORIZONTAL
-        port: TOP
 
     QO-100 Scan:
         freq:
@@ -33,8 +35,6 @@ presets:
           - 333
           - 500
         band: *bandlnblow
-        pol:  HORIZONTAL
-        port: TOP
 
 default: *presetdefault
 

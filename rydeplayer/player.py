@@ -72,13 +72,9 @@ class guiState(rydeplayer.states.gui.SuperStates):
             'sr-sel'   : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'sr', 'kS', 'SR', config.tuner.sr, config.tuner.runCallback),
             'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "band", "sr-sel", config.tuner.sr),
             'band-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'band', config.bands, config.tuner.getBand, config.tuner.setBand),
-            'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "pol", "band-sel"),
-            'pol-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'pol', {longmynd.PolarityEnum.NONE:'None', longmynd.PolarityEnum.HORIZONTAL:'Horizontal', longmynd.PolarityEnum.VERTICAL:'Vertical'}, config.tuner.getPolarity, config.tuner.setPolarity),
-            'pol'      : rydeplayer.states.gui.MenuItem(self.theme, "LNB Polarity", "band", "port", "pol-sel"),
-            'port-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'port', {longmynd.inPortEnum.TOP:'Top', longmynd.inPortEnum.BOTTOM:'Bottom'}, config.tuner.getInputPort, config.tuner.setInputPort),
-            'port'     : rydeplayer.states.gui.MenuItem(self.theme, "Input Port", "pol", "preset", "port-sel"),
+            'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "preset", "band-sel"),
             'preset-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'preset', config.presets, lambda:config.tuner, config.tuner.setConfigToMatch),
-            'preset'      : rydeplayer.states.gui.MenuItem(self.theme, "Presets", "port", "freq", "preset-sel"),
+            'preset'      : rydeplayer.states.gui.MenuItem(self.theme, "Presets", "band", "freq", "preset-sel"),
 #            'autoplay-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'autoplay', {True:'Enabled', False:'Disabled'}, config.debug.autoplay, config.setAutoplay),
 #            'autoplay' : rydeplayer.states.gui.MenuItem(self.theme, "Autoplay", "port", "vlcplay", "autoplay-sel"),
         }
@@ -145,7 +141,7 @@ class rydeConfig(object):
             'autoplay': True,
             'disableHardwareCodec': True,
             })
-        self.configRev = 1
+        self.configRev = 2
     #setter for default values
     def setAutoplay(self, newval):
         self.debug.autoplay = newval
