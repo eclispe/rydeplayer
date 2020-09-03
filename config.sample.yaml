@@ -11,12 +11,14 @@ bands:
         lofreq: 0
         loside: HIGH
         pol:  NONE
-        port: TOP
+        port: BOTTOM
+        gpioid: 1
     LNB Low: &bandlnblow
         lofreq: 9750000
         loside: LOW
         pol:  HORIZONTAL
         port: TOP
+        gpioid: 0
 
 presets:
     QO-100 Beacon: &presetdefault

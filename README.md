@@ -29,6 +29,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
     * ```loside``` Select either ```HIGH``` or ```LOW``` depending on if the IF is above or below the LO frequency respectively
     * ```pol``` Band polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```
     * ```port``` Band input port. Choose from ```TOP``` or ```BOTTOM```
+    * ```gpioid``` Band GPIO ID, valid values are 0-7.
 * ```presets```
   * Name of the preset, following the same naming rules as for bands above. It is also recommended you add an anchor to a preset to use as the default also similar to bands above, e.g. ```"QO-100 Beacon": &presetdefault```
     * ```freq``` Preset frequency to tune, this can either be a single frequency or a list of frequencies to enable frequency scanning

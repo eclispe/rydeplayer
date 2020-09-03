@@ -36,12 +36,14 @@ class tunerBand(object):
         self.loside = LOOffsetSideEnum.LOW
         self.pol = PolarityEnum.NONE
         self.port = inPortEnum.TOP
+        self.gpioid = 0
 
-    def setBand(self, freq, loside, pol, port):
+    def setBand(self, freq, loside, pol, port, gpioid):
         self.freq = freq
         self.loside = loside
         self.pol = pol
         self.port = port
+        self.gpioid = gpioid
 
     def loadBand(self, config):
         configUpdated = False
@@ -111,6 +113,21 @@ class tunerBand(object):
             else:
                 print("Input port config missing, skipping")
                 perfectConfig = False
+
+            if 'gpioid' in config:
+                if isinstance(config['gpioid'], int):
+                    if config['gpioid'] < 8 and config['gpioid'] >= 0:
+                        self.gpioid = config['gpioid']
+                        configUpdated = True
+                    else:
+                        print("GPIO ID config out of range, skipping")
+                        perfectConfig = False
+                else:
+                    print("GPIO ID config invalid, skipping")
+                    perfectConfig = False
+            else:
+                print("GPIO ID config missing, skipping")
+
         return perfectConfig
 
     def getFrequency(self):
@@ -124,6 +141,9 @@ class tunerBand(object):
 
     def getInputPort(self):
         return self.port
+
+    def getGPIOid(self):
+        return self.gpioid
 
     # return tuner frequency from requested frequency
     def mapReqToTune(self, freq):
@@ -159,10 +179,10 @@ class tunerBand(object):
         if not isinstance(other,tunerBand):
             return NotImplemented
         else:
-            return self.freq == other.freq and self.loside == other.loside and self.pol == other.pol and self.port == other.port
+            return self.freq == other.freq and self.loside == other.loside and self.pol == other.pol and self.port == other.port and self.gpioid == other.gpioid
     
     def __hash__(self):
-        return hash((self.freq, self.loside, self.pol, self.port))
+        return hash((self.freq, self.loside, self.pol, self.port, self.gpioid))
 
 # Stores the a tuner integer and its limits
 class tunerConfigInt(rydeplayer.common.validTracker):
@@ -300,7 +320,7 @@ class tunerConfig(rydeplayer.common.validTracker):
         # default is QO-100 Beacon
         self.updateCallback = None # function that is called when the config changes
         self.band = tunerBand()
-        self.band.setBand(0, LOOffsetSideEnum.LOW, PolarityEnum.NONE, inPortEnum.TOP)
+        self.band.setBand(0, LOOffsetSideEnum.LOW, PolarityEnum.NONE, inPortEnum.TOP, 0)
         self.tunerMinFreq = 144000
         self.tunerMaxFreq = 2450000
         defaultfreq = 741500
