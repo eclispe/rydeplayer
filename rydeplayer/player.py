@@ -75,18 +75,30 @@ class guiState(rydeplayer.states.gui.SuperStates):
             'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "preset", "band-sel"),
             'preset-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'preset', config.presets, lambda:config.tuner, config.tuner.setConfigToMatch),
             'preset'      : rydeplayer.states.gui.MenuItem(self.theme, "Presets", "band", "freq", "preset-sel"),
-#            'autoplay-sel' : rydeplayer.states.gui.ListSelect(self.theme, 'autoplay', {True:'Enabled', False:'Disabled'}, config.debug.autoplay, config.setAutoplay),
-#            'autoplay' : rydeplayer.states.gui.MenuItem(self.theme, "Autoplay", "port", "vlcplay", "autoplay-sel"),
         }
 
         firstkey = 'freq'
         lastkey = 'preset'
-        for key in debugFunctions:
-            menukey = key.strip().replace(" ", "").lower()
-            mainMenuStates[menukey] = rydeplayer.states.gui.MenuItemFunction(self.theme, key, lastkey, firstkey, debugFunctions[key])
-            mainMenuStates[lastkey].down = menukey
-            mainMenuStates[firstkey].up = menukey
-            lastkey = menukey
+        
+        if config.debug.enableMenu:
+            # generate debug menu states
+            debugMenuStates = {}
+            debugPrevState = None
+            debugFirstState = None
+            for key in debugFunctions:
+                menukey = key.strip().replace(" ", "").lower()
+                if debugFirstState is None:
+                    debugFirstState = menukey
+                    debugPrevState = menukey
+                debugMenuStates[menukey] = rydeplayer.states.gui.SubMenuItemFunction(self.theme, key, debugPrevState, debugFirstState, debugFunctions[key])
+                debugMenuStates[debugPrevState].down = menukey
+                debugMenuStates[debugFirstState].up = menukey
+                debugPrevState = menukey
+            mainMenuStates['debug-sel'] = rydeplayer.states.gui.SubMenuGeneric(self.theme, 'debug', debugMenuStates, debugFirstState)
+            mainMenuStates['debug'] = rydeplayer.states.gui.MenuItem(self.theme, "Debug", lastkey, firstkey, "debug-sel")
+            mainMenuStates[lastkey].down = 'debug'
+            mainMenuStates[firstkey].up = 'debug'
+            lastkey = 'debug'
 
         self.state_dict = {
             'menu': rydeplayer.states.gui.Menu(self.theme, 'home', mainMenuStates, "freq"),
@@ -138,6 +150,7 @@ class rydeConfig(object):
         self.bands[defaultBand] = "None"
         self.presets = {}
         self.debug = type('debugConfig', (object,), {
+            'enableMenu': False,
             'autoplay': True,
             'disableHardwareCodec': True,
             })
@@ -258,12 +271,19 @@ class rydeConfig(object):
             # parse debug options
             if 'debug' in config:
                 if isinstance(config['debug'], dict):
+                    if 'enableMenu' in config['debug']:
+                        if isinstance(config['debug']['enableMenu'], bool):
+                            self.debug.enableMenu = config['debug']['enableMenu']
+                        else:
+                            print("Invalid debug menu config, skipping")
+                            perfectConfig = False
                     if 'autoplay' in config['debug']:
                         if isinstance(config['debug']['autoplay'], bool):
                             self.debug.autoplay = config['debug']['autoplay']
                         else:
                             print("Invalid debug autoplay config, skipping")
                             perfectConfig = False
+                    if 'disableHardwareCodec' in config['debug']:
                         if isinstance(config['debug']['disableHardwareCodec'], bool):
                             self.debug.disableHardwareCodec = config['debug']['disableHardwareCodec']
                         else:

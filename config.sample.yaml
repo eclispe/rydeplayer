@@ -64,5 +64,6 @@ gpio:
         MUTE:   6
 
 debug:
+    enableMenu: False
     autoplay: True
     disableHardwareCodec: True
