@@ -63,6 +63,8 @@ gpio:
         MENU:   5
         MUTE:   6
 
+shutdownBehavior: APPSTOP
+
 debug:
     enableMenu: False
     autoplay: True

@@ -46,6 +46,14 @@ class SuperStates(States):
         self.state.update()
     def get_event(self, event):
         self.state.get_event(event)
+    def setStateStack(self, stateStack):
+        newState = stateStack.pop()
+        if self.state_name != newState:
+            self.state.next = newState
+            self.state.done = True
+            self.update()
+        if len(stateStack) > 0 and isinstance(self.state, SuperStates):
+            self.state.setStateStack(stateStack)
     def cleanup(self):
         if(not self.done):
             self.state.cleanup()
@@ -303,6 +311,7 @@ class MenuItemFunction(MenuItem):
         elif( event == navEvent.SELECT):
             if(self.select != None):
                 self.select()
+                return True
         return False
 
 # Simple menu item that executes a callback function when it is "selected"
@@ -321,6 +330,7 @@ class SubMenuItemFunction(SubMenuItem):
         elif( event == navEvent.SELECT):
             if(self.select != None):
                 self.select()
+                return True
         return False
 
 # The submenu items for a ListSelect

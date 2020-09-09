@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools
+import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys
 from . import longmynd
 from . import ir
 import rydeplayer.gpio
@@ -59,26 +59,54 @@ class Theme(object):
                 fontsize += 1
         return fontsize
 
+# power menu UI state machine
+class SubMenuPower(rydeplayer.states.gui.ListSelect):
+    def __init__(self, theme, backState, shutdownCallback):
+        items = {
+                    rydeplayer.common.shutdownBehavior.APPSTOP : 'App Shutdown',
+                    rydeplayer.common.shutdownBehavior.APPREST : 'App Restart',
+                }
+        super().__init__(theme, backState, items, lambda: rydeplayer.common.shutdownBehavior.APPSTOP, shutdownCallback)
+    def get_event(self, event):
+        print("TOP")
+        print(event)
+        if super().get_event(event):
+            print("HANDEL")
+            print(event)
+            return True
+        else:
+            if event == rydeplayer.common.navEvent.POWER:
+                print("REFIRE")
+                print(event)
+                return super().get_event(rydeplayer.common.navEvent.SELECT)
+
+            else:
+                return False
+
 # main UI state machine
 class guiState(rydeplayer.states.gui.SuperStates):
-    def __init__(self, theme):
+    def __init__(self, theme, shutdownBehaviorDefault):
         super().__init__(theme)
         self.done = False
+        self.shutdownBehaviorDefault = shutdownBehaviorDefault
+        self.shutdownState = rydeplayer.common.shutdownBehavior.APPSTOP
     def startup(self, config, debugFunctions):
         # main menu states, order is important to get menus and sub menus to display in the right place
         mainMenuStates = {
             'freq-sel' : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'freq', 'kHz', 'Freq', config.tuner.freq, config.tuner.runCallback),
-            'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "preset", "sr", "freq-sel", config.tuner.freq),
+            'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "power", "sr", "freq-sel", config.tuner.freq),
             'sr-sel'   : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'sr', 'kS', 'SR', config.tuner.sr, config.tuner.runCallback),
             'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "band", "sr-sel", config.tuner.sr),
             'band-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'band', config.bands, config.tuner.getBand, config.tuner.setBand),
             'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "preset", "band-sel"),
             'preset-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'preset', config.presets, lambda:config.tuner, config.tuner.setConfigToMatch),
-            'preset'      : rydeplayer.states.gui.MenuItem(self.theme, "Presets", "band", "freq", "preset-sel"),
+            'preset'      : rydeplayer.states.gui.MenuItem(self.theme, "Presets", "band", "power", "preset-sel"),
+            'power-sel'  : SubMenuPower(self.theme, 'power', self.shutdown),
+            'power'      : rydeplayer.states.gui.MenuItem(self.theme, "Power", "preset", "freq", "power-sel"),
         }
 
         firstkey = 'freq'
-        lastkey = 'preset'
+        lastkey = 'power'
         
         if config.debug.enableMenu:
             # generate debug menu states
@@ -110,12 +138,16 @@ class guiState(rydeplayer.states.gui.SuperStates):
         self.state_name = "home"
         self.state = self.state_dict[self.state_name]
         self.state.startup()
+
+    def shutdown(self, shutdownState):
+        self.shutdownState = shutdownState
+        self.state.cleanup()
+        self.done = True
+
     def get_event(self, event):
-        if(event == rydeplayer.common.navEvent.POWER):
-            self.state.cleanup()
-            self.done = True
-        else:
-            self.state.get_event(event)
+        if not self.state.get_event(event):
+            if event == rydeplayer.common.navEvent.POWER:
+                self.setStateStack([self.shutdownBehaviorDefault,'power-sel','menu'])
 
 # GUI state for when the menu isnt showing
 class Home(rydeplayer.states.gui.States):
@@ -149,6 +181,7 @@ class rydeConfig(object):
         defaultBand = longmynd.tunerBand()
         self.bands[defaultBand] = "None"
         self.presets = {}
+        self.shutdownBehavior = rydeplayer.common.shutdownBehavior.APPSTOP
         self.debug = type('debugConfig', (object,), {
             'enableMenu': False,
             'autoplay': True,
@@ -268,6 +301,22 @@ class rydeConfig(object):
             # pass the gpio config to be parsed by the gpio config container
             if 'gpio' in config:
                 perfectConfig = perfectConfig and self.gpio.loadConfig(config['gpio'])
+            # parse shutdown default shutdown event behavior
+            if 'shutdownBehavior' in config:
+                if isinstance(config['shutdownBehavior'], str):
+                    validShutBehav = False
+                    for shutBehavOpt in rydeplayer.common.shutdownBehavior:
+                        if shutBehavOpt.name == config['shutdownBehavior'].upper():
+                            self.shutdownBehavior = shutBehavOpt
+                            validShutBehav = True
+                            break
+                    if not validShutBehav:
+                        print("Shutdown behavior default invalid, skipping")
+                        perfectConfig = False
+                else:
+                    print("Shutdown behavior default invalid, skipping")
+                    perfectConfig = False
+
             # parse debug options
             if 'debug' in config:
                 if isinstance(config['debug'], dict):
@@ -332,7 +381,7 @@ class player(object):
         self.vlcStartup()
 
         # start ui
-        self.app = guiState(self.theme)
+        self.app = guiState(self.theme, self.config.shutdownBehavior)
         self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
 
         # setup ir
@@ -358,6 +407,12 @@ class player(object):
                 self.updateState()
                 if quit:
                     break
+        self.shutdown(self.app.shutdownState)
+
+    def shutdown(self, behaviour):
+        del(self.playbackState)
+        if behaviour is rydeplayer.common.shutdownBehavior.APPREST:
+            os.execv(sys.executable, ['python3', '-m', 'rydeplayer'] + sys.argv[1:])
 
     def handleEvent(self, fd):
         quit = False
