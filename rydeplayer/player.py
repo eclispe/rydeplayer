@@ -65,6 +65,8 @@ class SubMenuPower(rydeplayer.states.gui.ListSelect):
         items = {
                     rydeplayer.common.shutdownBehavior.APPSTOP : 'App Shutdown',
                     rydeplayer.common.shutdownBehavior.APPREST : 'App Restart',
+                    rydeplayer.common.shutdownBehavior.SYSSTOP : 'System Shutdown',
+                    rydeplayer.common.shutdownBehavior.SYSREST : 'System Restart',
                 }
         super().__init__(theme, backState, items, lambda: rydeplayer.common.shutdownBehavior.APPSTOP, shutdownCallback)
     def get_event(self, event):
@@ -407,6 +409,10 @@ class player(object):
         del(self.playbackState)
         if behaviour is rydeplayer.common.shutdownBehavior.APPREST:
             os.execv(sys.executable, ['python3', '-m', 'rydeplayer'] + sys.argv[1:])
+        elif behaviour is rydeplayer.common.shutdownBehavior.SYSSTOP:
+            os.system("sudo shutdown -h now")
+        elif behaviour is rydeplayer.common.shutdownBehavior.SYSREST:
+            os.system("sudo shutdown -r now")
 
     def handleEvent(self, fd):
         quit = False

@@ -50,6 +50,8 @@ class navEvent(enum.Enum):
 class shutdownBehavior(enum.Enum):
     APPSTOP = enum.auto()
     APPREST = enum.auto()
+    SYSSTOP = enum.auto()
+    SYSREST = enum.auto()
 
 class validTracker(object):
     def __init__(self, initValid):
