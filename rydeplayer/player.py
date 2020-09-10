@@ -68,16 +68,10 @@ class SubMenuPower(rydeplayer.states.gui.ListSelect):
                 }
         super().__init__(theme, backState, items, lambda: rydeplayer.common.shutdownBehavior.APPSTOP, shutdownCallback)
     def get_event(self, event):
-        print("TOP")
-        print(event)
         if super().get_event(event):
-            print("HANDEL")
-            print(event)
             return True
         else:
             if event == rydeplayer.common.navEvent.POWER:
-                print("REFIRE")
-                print(event)
                 return super().get_event(rydeplayer.common.navEvent.SELECT)
 
             else:
