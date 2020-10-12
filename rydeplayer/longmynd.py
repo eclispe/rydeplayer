@@ -556,6 +556,8 @@ class lmManager(object):
         # for tracking LNA initialisation errors
         self.lnaIniting = False
         self.lnaErrorCount = 0
+        self.autoresetdetect = False
+        self.autoresetprogress = 0
         self.lastState = { 'state':None, 'provider': '', 'service': '', 'modcode': None, 'pids': {} }
         self.changeRefState = copy.deepcopy(self.lastState)
         self.stateMonotonic = 0
@@ -668,20 +670,36 @@ class lmManager(object):
             newline = rawnewline.rstrip()
             self.lmlog.append(newline)
             if not stop:
-                if(newline.startswith("ERROR:")):
+                if(self.autoresetdetect):
+                    if(newline.startswith("ERROR: Tuner set freq") and self.autoresetprogress == 1):
+                        self.autoresetprogress = 2
+                    elif(newline.startswith("ERROR: Failed to init Tuner") and self.autoresetprogress == 2):
+                        self.autoresetprogress = 3
+                    elif(newline.startswith("Flow: Caught tuner lock timeout,") and self.autoresetprogress == 3):
+                        self.autoresetdetect = False
+                        if("attempts at stv6120_init() remaining" in newline):
+                            print("Longmynd reset")
+                        else:
+                            stop = True
+                    else:
+                        stop = True
+                elif(newline.startswith("ERROR:")):
                     # its probably crashed, stop and output
                     # some errors are't critical while lna are initalising, might just be an old NIM
                     if(self.lnaIniting and newline.startswith("ERROR: i2c read reg8")):
                         self.lnaErrorCount += 1
+                    elif(newline.startswith("ERROR: tuner wait on lock timed out") and not self.autoresetdetect):
+                        self.autoresetdetect = True
+                        self.autoresetprogress = 1
                     elif(not (self.lnaIniting and newline.startswith("ERROR: lna read"))):
                         stop = True
-                if(newline.lstrip().startswith("Flow:")):
+                elif(newline.lstrip().startswith("Flow:")):
                     flowline = (newline.lstrip()[6:])
                     if(flowline.startswith("LNA init")):
                         # start tracking LNA initalisation errors
                         self.lnaIniting = True
                         self.lnaErrorCount = 0
-                if(newline.lstrip().startswith("Status:")):
+                elif(newline.lstrip().startswith("Status:")):
                     lnaLines = ['found new NIM with LNAs', 'found an older NIM with no LNA']
                     statusline = newline.lstrip()[8:]
 
