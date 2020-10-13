@@ -318,7 +318,7 @@ class tunerConfigIntList(rydeplayer.common.validTracker):
 class tunerConfig(rydeplayer.common.validTracker):
     def __init__(self):
         # default is QO-100 Beacon
-        self.updateCallback = None # function that is called when the config changes
+        self.updateCallbacks = [] # function that is called when the config changes
         self.band = tunerBand()
         self.band.setBand(0, LOOffsetSideEnum.LOW, PolarityEnum.NONE, inPortEnum.TOP, 0)
         self.tunerMinFreq = 144000
@@ -341,7 +341,7 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.band = band
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         self.updateValid()
-        self.runCallback()
+        self.runCallbacks()
 
     def setConfigToMatch(self, fromConfig):
         self.setFrequencies(fromConfig.freq.getValues())
@@ -448,7 +448,7 @@ class tunerConfig(rydeplayer.common.validTracker):
 
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         if configUpdated: # run the callback if we chaged something
-            self.runCallback()
+            self.runCallbacks()
         return perfectConfig
 
     def setFrequencies(self, newFreq):
@@ -462,7 +462,7 @@ class tunerConfig(rydeplayer.common.validTracker):
                    self.freq.append(thisNewFreq)
         else:
             self.freq.setSingleValue(newFreq)
-        self.runCallback()
+        self.runCallbacks()
 
     def setSymbolRates(self, newSr):
         if isinstance(newSr, collections.abc.Iterable):
@@ -475,15 +475,17 @@ class tunerConfig(rydeplayer.common.validTracker):
                    self.sr.append(thisNewSr)
         else:
             self.sr.setSingleValue(newSr)
-        self.runCallback()
+        self.runCallbacks()
     def setBand(self, newBand):
         self.band = newBand
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
-        self.runCallback()
+        self.runCallbacks()
     def getBand(self):
         return self.band
-    def setCallbackFunction(self, newCallback):
-        self.updateCallback = newCallback
+    def addCallbackFunction(self, newCallback):
+        self.updateCallbacks.append(newCallback)
+    def removeCallbackFunction(self, oldCallback):
+        self.updateCallbacks.remove(oldCallback)
 
     def updateValid(self):
         return super().updateValid(self.calcValid())
@@ -494,9 +496,9 @@ class tunerConfig(rydeplayer.common.validTracker):
         newValid = newValid and self.sr.isValid()
         return newValid;
 
-    def runCallback(self):
-        if self.updateCallback is not None :
-            self.updateCallback(self)
+    def runCallbacks(self):
+        for callback in self.updateCallbacks:
+            callback(self)
     def copyConfig(self):
         # return a copy of the config details but with no callback connected
         newConfig = tunerConfig()
