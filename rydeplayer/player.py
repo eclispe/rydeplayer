@@ -81,9 +81,10 @@ class SubMenuPower(rydeplayer.states.gui.ListSelect):
 
 # main UI state machine
 class guiState(rydeplayer.states.gui.SuperStates):
-    def __init__(self, theme, shutdownBehaviorDefault):
+    def __init__(self, theme, shutdownBehaviorDefault, player):
         super().__init__(theme)
         self.done = False
+        self.player = player
         self.shutdownBehaviorDefault = shutdownBehaviorDefault
         self.shutdownState = rydeplayer.common.shutdownBehavior.APPSTOP
     def startup(self, config, debugFunctions):
@@ -126,7 +127,7 @@ class guiState(rydeplayer.states.gui.SuperStates):
 
         self.state_dict = {
             'menu': rydeplayer.states.gui.Menu(self.theme, 'home', mainMenuStates, "freq"),
-            'home': Home(self.theme)
+            'home': Home(self.theme, self.player)
         }
         # add callback to rederaw menu item if tuner data is updated
         config.tuner.freq.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['freq'], mainMenuStates['freq'].getSurfaceRects()))
@@ -147,9 +148,10 @@ class guiState(rydeplayer.states.gui.SuperStates):
 
 # GUI state for when the menu isnt showing
 class Home(rydeplayer.states.gui.States):
-    def __init__(self, theme):
+    def __init__(self, theme, player):
         super().__init__(theme)
         self.next = 'menu'
+        self.player = player
     def cleanup(self):
         None
     def startup(self):
@@ -158,6 +160,8 @@ class Home(rydeplayer.states.gui.States):
         #TODO: add OSD state machine
         if(event == rydeplayer.common.navEvent.SELECT):
             print('OSD')
+        elif(event == rydeplayer.common.navEvent.MUTE):
+            self.player.toggleMute()
         elif(event == rydeplayer.common.navEvent.MENU):
             self.done = True
 
@@ -358,6 +362,9 @@ class rydeConfig(object):
 class player(object):
 
     def __init__(self, configFile = None):
+        # mute
+        self.mute = False
+        self.muteCallbacks = []
         # load config
         self.config = rydeConfig()
         if configFile != None:
@@ -377,8 +384,8 @@ class player(object):
         self.vlcStartup()
 
         # start ui
-        self.app = guiState(self.theme, self.config.shutdownBehavior)
         self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
+        self.app = guiState(self.theme, self.config.shutdownBehavior, self)
 
         # setup ir
         self.irMan = ir.irManager(self.stepSM, self.config.ir)
@@ -404,6 +411,22 @@ class player(object):
                 if quit:
                     break
         self.shutdown(self.app.shutdownState)
+
+    def addMuteCallback(self, callback):
+        self.muteCallbacks.append(callback)
+
+    def removeMuteCallback(self, callback):
+        self.muteCallbacks.remove(callback)
+
+    def setMute(self,newMute):
+        if self.mute != newMute:
+            self.mute = newMute
+            self.vlcPlayer.audio_set_mute(newMute)
+            for callback in self.muteCallbacks:
+                callback(newMute)
+
+    def toggleMute(self):
+        self.setMute(not self.mute)
 
     def shutdown(self, behaviour):
         del(self.playbackState)
@@ -450,6 +473,7 @@ class player(object):
                 self.vlcStop()
 #               print("parsed:"+str(vlcMedia.is_parsed()))
             self.gpioMan.setRXgood(False)
+        self.vlcPlayer.audio_set_mute(self.mute)
         print(self.vlcPlayer.get_state())
 
     # Step the state machine with a navEvent
