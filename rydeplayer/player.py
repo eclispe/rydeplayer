@@ -36,14 +36,17 @@ class Theme(object):
             'backgroundSubMenu': (57,169,251,255),
             'backgroundPlayState': (255,0,0,255),
             })
-        self.menuWidth = int(displaySize[0]/4)
-        self.menuHeight = int(displaySize[1])
+        self.displayWidth = int(displaySize[0])
+        self.displayHeight = int(displaySize[1])
+        self.menuWidth = int(self.displayWidth/4)
+        self.menuHeight = self.displayHeight
         playStateTitleFontSize=self.fontSysSizeOptimize('Not Loaded', displaySize[0]/2, 'freesans')
         menuH1FontSize=self.fontSysSizeOptimize('BATC Ryde Project', self.menuWidth*0.85, 'freesans')
         self.fonts = type('fonts', (object,), {
             'menuH1': pygame.font.SysFont('freesans', menuH1FontSize),
             'playStateTitle' :  pygame.font.SysFont('freesans', playStateTitleFontSize),
             })
+        self._circlecache = {}
         self.logofile = pkg_resources.resource_stream('rydeplayer.resources', 'logo_menu.png')
 
     # calculate the largest font size that you can render the given test in as still be less than width
@@ -58,6 +61,66 @@ class Theme(object):
             else:
                 fontsize += 1
         return fontsize
+
+    # size and position a pygame rectangle using screen size independent units and a datum corner
+    def relativeRect(self, datum, xEdgeDistance, yEdgeDistance, width, height):
+        outwidth = self.displayHeight*width
+        outheight = self.displayHeight*height
+        if datum is rydeplayer.common.datumCornerEnum.TR:
+            outX = self.displayWidth - ((xEdgeDistance+width)*self.displayHeight)
+            outY = yEdgeDistance*self.displayHeight
+        elif datum is rydeplayer.common.datumCornerEnum.TL:
+            outX = xEdgeDistance*self.displayHeight
+            outY = yEdgeDistance*self.displayHeight
+        elif datum is rydeplayer.common.datumCornerEnum.BR:
+            outX = self.displayWidth - ((xEdgeDistance+width)*self.displayHeight)
+            outY = self.displayHeight - ((yEdgeDistance+height)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.BL:
+            outX = xEdgeDistance*self.displayHeight
+            outY = self.displayHeight - ((yEdgeDistance+height)*self.displayHeight)
+        return pygame.Rect((outX, outY, outwidth, outheight))
+
+    # helper function for outline font rendering
+    def _circlepoints(self,r):
+        r = int(round(r))
+        if r in self._circlecache:
+            return self._circlecache[r]
+        x, y, e = r, 0, 1 - r
+        self._circlecache[r] = points = []
+        while x >= y:
+            points.append((x, y))
+            y += 1
+            if e < 0:
+                e += 2 * y - 1
+            else:
+                x -= 1
+                e += 2 * (y - x) - 1
+        points += [(y, x) for x, y in points if x > y]
+        points += [(-x, y) for x, y in points if x]
+        points += [(x, -y) for x, y in points if y]
+        points.sort()
+        return points
+
+    # render font with different coloured outline
+    def outlineFontRender(self, text, font, gfcolor, ocolor, opx=2):
+        textsurface = font.render(text, True, gfcolor)
+        w = textsurface.get_width() + 2 * opx
+        h = font.get_height()
+
+        osurf = pygame.Surface((w, h + 2 * opx), pygame.SRCALPHA)
+        osurf.fill((0, 0, 0, 0))
+
+        surf = osurf.copy()
+
+        osurf.blit(font.render(text, True, ocolor), (0, 0))
+
+        for dx, dy in self._circlepoints(opx):
+            surf.blit(osurf, (dx + opx, dy + opx))
+
+        surf.blit(textsurface, (opx, opx))
+        return surf
+
+
 
 # power menu UI state machine
 class SubMenuPower(rydeplayer.states.gui.ListSelect):
