@@ -384,8 +384,8 @@ class player(object):
         self.vlcStartup()
 
         # start ui
-        self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
         self.app = guiState(self.theme, self.config.shutdownBehavior, self)
+        self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
 
         # setup ir
         self.irMan = ir.irManager(self.stepSM, self.config.ir)
