@@ -159,14 +159,16 @@ class Home(rydeplayer.states.gui.States):
     def get_event(self, event):
         #TODO: add OSD state machine
         if(event == rydeplayer.common.navEvent.SELECT):
-            print('OSD')
+            self.osd.activate(3)
+        elif(event == rydeplayer.common.navEvent.BACK):
+            self.osd.deactivate(3)
         elif(event == rydeplayer.common.navEvent.MUTE):
             self.player.toggleMute()
         elif(event == rydeplayer.common.navEvent.MENU):
             self.done = True
 
 class rydeConfig(object):
-    def __init__(self):
+    def __init__(self, theme):
         self.ir = ir.irConfig()
         self.gpio = rydeplayer.gpio.gpioConfig()
         self.tuner = longmynd.tunerConfig()
@@ -362,20 +364,21 @@ class rydeConfig(object):
 class player(object):
 
     def __init__(self, configFile = None):
-        # mute
-        self.mute = False
-        self.muteCallbacks = []
-        # load config
-        self.config = rydeConfig()
-        if configFile != None:
-            self.config.loadFile(configFile)
-        print(self.config.tuner)
-
         # setup ui core
         pygame.init()
         self.theme = Theme(pydispmanx.getDisplaySize())
         self.playbackState = rydeplayer.states.playback.StateDisplay(self.theme)
         print(pygame.font.get_fonts())
+
+        # load config
+        self.config = rydeConfig(self.theme)
+        if configFile != None:
+            self.config.loadFile(configFile)
+        print(self.config.tuner)
+
+        # mute
+        self.mute = False
+        self.muteCallbacks = []
 
         # setup longmynd
         self.lmMan = longmynd.lmManager(self.config.tuner, self.config.longmynd.binpath, self.config.longmynd.mediapath, self.config.longmynd.statuspath, self.config.longmynd.tstimeout)
