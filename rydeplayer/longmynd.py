@@ -520,6 +520,37 @@ class tunerConfig(rydeplayer.common.validTracker):
         output += "      Symbol Rate: "+str(self.sr)+"\n"
         return output
 
+# Container for tuner status data with change callbacks
+class tunerStatus(object):
+    def __init__(self):
+        self.onChangeCallbacks = []
+        self.mer = 0
+
+    def addOnChangeCallback(self, callback):
+        self.onChangeCallbacks.append(callback)
+
+    def removeOnChangeCallback(self, callback):
+        self.onChangeCallbacks.remove(callback)
+
+    def onChangeFire(self):
+        for callback in self.onChangeCallbacks:
+            callback(self)
+
+    def setMer(self, newval):
+        if(isinstance(newval, float)):
+            self.mer = newval
+            self.onChangeFire()
+            return True
+        elif(isinstance(newval, int)):
+            self.mer = float(int)
+            self.onChangeFire()
+            return True
+        else:
+            return False
+
+    def getMer(self):
+        return self.mer
+
 class lmManager(object):
     def __init__(self, config, lmpath, mediaFIFOpath, statusFIFOpath, tsTimeout):
         # path to the longmynd binary
@@ -563,6 +594,7 @@ class lmManager(object):
         self.lastState = { 'state':None, 'provider': '', 'service': '', 'modcode': None, 'pids': {} }
         self.changeRefState = copy.deepcopy(self.lastState)
         self.stateMonotonic = 0
+        self.tunerStatus = tunerStatus()
 
     def reconfig(self, config):
         """reconfigures longmynd"""
@@ -577,6 +609,8 @@ class lmManager(object):
         return self.vlcMediaFd
     def getFDs(self):
         return [self.statusFIFOfd, self.stdoutReadfd]
+    def getStatus(self):
+        return self.tunerStatus
     def handleFD(self, fd):
         """handles a file descriptor that has data to read"""
         fdCallbacks = dict()
@@ -618,13 +652,15 @@ class lmManager(object):
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
                         self.stateMonotonic += 1
                     self.lastState['state'] = int(rawval)
-                    if int(rawval) < 3: # if it nis ot locked, reset some state
+                    if int(rawval) < 3: # if it is not locked, reset some state
                         self.lastState['provider'] = ""
                         self.lastState['service'] = ""
                         self.lastState['modcode'] = None
                         self.lastState['pids'] = {}
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
                         self.stateMonotonic = 0
+                elif msgtype == 12:
+                    self.tunerStatus.setMer(float(rawval)/10)
                 elif msgtype == 13:
                     self.lastState['provider'] = rawval
                 elif msgtype == 14:
