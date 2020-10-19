@@ -21,6 +21,8 @@ import rydeplayer.gpio
 import rydeplayer.common
 import rydeplayer.states.gui
 import rydeplayer.states.playback
+import rydeplayer.osd.display
+import rydeplayer.osd.modules
 
 # container for the theme
 class Theme(object):
@@ -48,6 +50,7 @@ class Theme(object):
             })
         self._circlecache = {}
         self.logofile = pkg_resources.resource_stream('rydeplayer.resources', 'logo_menu.png')
+        self.muteicon = pkg_resources.resource_stream('rydeplayer.resources', 'icon_mute.png')
 
     # calculate the largest font size that you can render the given test in as still be less than width
     def fontSysSizeOptimize(self, text, width, fontname):
@@ -144,10 +147,11 @@ class SubMenuPower(rydeplayer.states.gui.ListSelect):
 
 # main UI state machine
 class guiState(rydeplayer.states.gui.SuperStates):
-    def __init__(self, theme, shutdownBehaviorDefault, player):
+    def __init__(self, theme, shutdownBehaviorDefault, player, osd):
         super().__init__(theme)
         self.done = False
         self.player = player
+        self.osd = osd
         self.shutdownBehaviorDefault = shutdownBehaviorDefault
         self.shutdownState = rydeplayer.common.shutdownBehavior.APPSTOP
     def startup(self, config, debugFunctions):
@@ -190,7 +194,7 @@ class guiState(rydeplayer.states.gui.SuperStates):
 
         self.state_dict = {
             'menu': rydeplayer.states.gui.Menu(self.theme, 'home', mainMenuStates, "freq"),
-            'home': Home(self.theme, self.player)
+            'home': Home(self.theme, self.player, self.osd)
         }
         # add callback to rederaw menu item if tuner data is updated
         config.tuner.freq.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['freq'], mainMenuStates['freq'].getSurfaceRects()))
@@ -208,12 +212,18 @@ class guiState(rydeplayer.states.gui.SuperStates):
         if not self.state.get_event(event):
             if event == rydeplayer.common.navEvent.POWER:
                 self.setStateStack([self.shutdownBehaviorDefault,'power-sel','menu'])
+            elif event == rydeplayer.common.navEvent.OSDON:
+                self.osd.activate(1)
+            elif event == rydeplayer.common.navEvent.OSDOFF:
+                self.osd.deactivate(1)
+
 
 # GUI state for when the menu isnt showing
 class Home(rydeplayer.states.gui.States):
-    def __init__(self, theme, player):
+    def __init__(self, theme, player, osd):
         super().__init__(theme)
         self.next = 'menu'
+        self.osd = osd
         self.player = player
     def cleanup(self):
         None
@@ -246,6 +256,7 @@ class rydeConfig(object):
         defaultBand = longmynd.tunerBand()
         self.bands[defaultBand] = "None"
         self.presets = {}
+        self.osd = rydeplayer.osd.display.Config(theme)
         self.shutdownBehavior = rydeplayer.common.shutdownBehavior.APPSTOP
         self.debug = type('debugConfig', (object,), {
             'enableMenu': False,
@@ -366,6 +377,9 @@ class rydeConfig(object):
             # pass the gpio config to be parsed by the gpio config container
             if 'gpio' in config:
                 perfectConfig = perfectConfig and self.gpio.loadConfig(config['gpio'])
+            # pass the osd config to be parsed by the osd config container
+            if 'osd' in config:
+                perfectConfig = perfectConfig and self.osd.loadConfig(config['osd'])
             # parse shutdown default shutdown event behavior
             if 'shutdownBehavior' in config:
                 if isinstance(config['shutdownBehavior'], str):
@@ -449,8 +463,11 @@ class player(object):
 
         self.vlcStartup()
 
+        # setup on screen display
+        self.osd = rydeplayer.osd.display.Controller(self.theme, self.config.osd, self.lmMan.getStatus(), self, self.config.tuner)
+
         # start ui
-        self.app = guiState(self.theme, self.config.shutdownBehavior, self)
+        self.app = guiState(self.theme, self.config.shutdownBehavior, self, self.osd)
         self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
 
         # setup ir
@@ -495,6 +512,7 @@ class player(object):
         self.setMute(not self.mute)
 
     def shutdown(self, behaviour):
+        del(self.osd)
         del(self.playbackState)
         if behaviour is rydeplayer.common.shutdownBehavior.APPREST:
             os.execv(sys.executable, ['python3', '-m', 'rydeplayer'] + sys.argv[1:])

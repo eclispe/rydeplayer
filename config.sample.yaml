@@ -68,6 +68,18 @@ gpio:
         lowgoing:
             OSDOFF: 26
 
+osd:
+    active:
+        MUTE:
+            datum: TR
+            x: 0.03
+            y: 0.3
+            w: 0.3
+            h: 0.3
+        MER: null
+    inactive:
+        MUTE: null
+
 shutdownBehavior: APPSTOP
 
 debug:

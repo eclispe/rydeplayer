@@ -55,6 +55,13 @@ class shutdownBehavior(enum.Enum):
     SYSSTOP = enum.auto()
     SYSREST = enum.auto()
 
+# Enum defining box corners to be used as datums
+class datumCornerEnum(enum.Enum):
+    TR = enum.auto()
+    TL = enum.auto()
+    BR = enum.auto()
+    BL = enum.auto()
+
 class validTracker(object):
     def __init__(self, initValid):
         self.valid = initValid
