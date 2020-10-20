@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import enum, os, stat, subprocess, pty, select, copy, fcntl, collections
+import enum, os, stat, subprocess, pty, select, copy, fcntl, collections, time
 import rydeplayer.common
 
 class inPortEnum(enum.Enum):
@@ -733,18 +733,50 @@ class lmManager(object):
         if stop:
             self.stop(True,True)
 
+    def _communicate(self, timeout = None):
+        if timeout is not None:
+            endtime = time.monotonic() + timeout
+        else:
+            endtime = None
+        minloop = 0.1
+        catchTimeout = True
+        while True:
+            endloop = time.monotonic() + minloop
+            if endtime is not None and endtime <= endloop:
+                endloop = endtime
+                catchTimeout = False
+            rawnewlines = self.stdoutReadfd.readlines()
+            for rawnewline in rawnewlines:
+                newline = rawnewline.rstrip()
+                self.lmlog.append("Zombie: "+newline)
+            if catchTimeout:
+                try:
+                    self.process.wait(max(endloop-time.monotonic(),0))
+                    break
+                except subprocess.TimeoutExpired:
+                    None
+            else:
+                self.process.wait(max(endloop-time.monotonic(),0))
+
     def stop(self, dumpOutput = False, waitfirst=False):
         #waitfirst is for if its crashed and we want to wait for it to die on its own so we get all the output
         if(waitfirst):
             try:
-                self.process.communicate(timeout=4)
+                self._communicate(timeout=4)
             except subprocess.TimeoutExpired:
                 dumpOutput=True
-                self.process.terminate()
-                self.process.communicate()
+                self.process.kill()
+                print("Killed during fatal")
+                self._communicate()
         else:
             self.process.terminate()
-            self.process.communicate()
+            try:
+                self._communicate(timeout=4)
+            except subprocess.TimeoutExpired:
+                dumpOutput=True
+                self.process.kill()
+                print("Killed during requested")
+            self._communicate()
         os.close(self.stdoutWritefd)
         #Drain the stdout buffer
         while True:
@@ -798,12 +830,14 @@ class lmManager(object):
 
                 args.append(",".join(freqStrings))
                 args.append(",".join(srStrings))
+                print(args)
                 self.process = subprocess.Popen(args, stdout=self.stdoutWritefd, stderr=subprocess.STDOUT, bufsize=0)
             else:
                 print("LM already running")
         else:
             print("Can't start, config invalid")
     def restart(self):
-        if(self.process != None):
+        if self.process is not None:
             self.stop()
         self.start()
+        time.sleep(0.1)
