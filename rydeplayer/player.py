@@ -65,6 +65,19 @@ class Theme(object):
                 fontsize += 1
         return fontsize
 
+    # calculate the largest font size that has a line height less than height
+    def fontSysSizeOptimizeHeight(self, height, fontname):
+        fontsize = -1
+        while True:
+            fontCandidate = pygame.font.SysFont(fontname, fontsize+1)
+            fontheight = fontCandidate.get_linesize()
+            del(fontCandidate)
+            if(fontheight > height):
+                break
+            else:
+                fontsize += 1
+        return fontsize
+
     # size and position a pygame rectangle using screen size independent units and a datum corner
     def relativeRect(self, datum, xEdgeDistance, yEdgeDistance, width, height):
         outwidth = self.displayHeight*width
@@ -525,6 +538,12 @@ class player(object):
 
     def toggleMute(self):
         self.setMute(not self.mute)
+
+    def getPresetName(self, preset):
+        if preset in self.config.presets:
+            return str(self.config.presets[preset])
+        else:
+            return ""
 
     def shutdown(self, behaviour):
         del(self.osd)
