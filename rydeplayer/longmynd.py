@@ -525,6 +525,8 @@ class tunerStatus(object):
     def __init__(self):
         self.onChangeCallbacks = []
         self.mer = None
+        self.provider = ""
+        self.service = ""
 
     def addOnChangeCallback(self, callback):
         self.onChangeCallbacks.append(callback)
@@ -535,6 +537,28 @@ class tunerStatus(object):
     def onChangeFire(self):
         for callback in self.onChangeCallbacks:
             callback(self)
+
+    def setProvider(self, newval):
+        if(isinstance(newval, str)):
+            if self.provider != newval:
+                self.provider = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setService(self, newval):
+        if(isinstance(newval, str)):
+            if self.service != newval:
+                self.service = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
 
     def setMer(self, newval):
         if(isinstance(newval, float)):
@@ -556,6 +580,12 @@ class tunerStatus(object):
 
     def getMer(self):
         return self.mer
+
+    def getProvider(self):
+        return self.provider
+
+    def getService(self):
+        return self.service
 
 class lmManager(object):
     def __init__(self, config, lmpath, mediaFIFOpath, statusFIFOpath, tsTimeout):
@@ -668,8 +698,10 @@ class lmManager(object):
                 elif msgtype == 12:
                     self.tunerStatus.setMer(float(rawval)/10)
                 elif msgtype == 13:
+                    self.tunerStatus.setProvider(str(rawval))
                     self.lastState['provider'] = rawval
                 elif msgtype == 14:
+                    self.tunerStatus.setService(str(rawval))
                     self.lastState['service'] = rawval
                 elif msgtype == 18:
                     self.lastState['modcode'] = int(rawval)

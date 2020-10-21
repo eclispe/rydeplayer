@@ -15,6 +15,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pygame
+import rydeplayer.longmynd
 from PIL import Image
 
 # Generic OSD display module
@@ -143,4 +144,71 @@ class mute(generic):
             self.surface.blit(self.iconSurface,(0,0))
         else:
             self.surface.fill(self.theme.colours.transparent)
+        super().redraw(rects, deferRedraw)
+
+class program(generic):
+    def __init__ (self, theme, drawCallback, rect):
+        super().__init__(theme, drawCallback, rect)
+        self.theme = theme
+        self.rect = rect.copy()
+        self.renderedbox = None
+        self.presetName = ""
+        self.provider = ""
+        self.service = ""
+        # track the current rendered value, to check for rerender
+        self.renderedPresetName = ""
+        self.renderedProvider = ""
+        self.renderedService = ""
+        self.presetNameRect = None
+        self.providerRect = None
+        self.serviceRect = None
+
+    def updateVal(self, newval):
+        if(isinstance(newval, rydeplayer.longmynd.tunerStatus)):
+            self.provider = newval.getProvider()
+            self.service = newval.getService()
+        elif(isinstance(newval, str)):
+            self.presetName = newval
+        self.redraw()
+
+    def redraw(self, rects = None, deferRedraw = False):
+        drawAll = False
+        if self.renderedbox is None or self.renderedbox != self.rect:
+            drawAll = True
+            self.surface.fill(self.theme.colours.backgroundMenu)
+            contentbox = pygame.Rect((self.rect.height*0.1,self.rect.height*0.1),(self.rect.width-(self.rect.height*0.2), self.rect.height*0.8)) # main content box
+            self.presetNameRect = pygame.Rect((contentbox.left+self.rect.height*0.1, contentbox.top),(contentbox.width-(self.rect.height*0.2), contentbox.height/3))
+            self.providerRect = pygame.Rect((self.presetNameRect.x, self.presetNameRect.bottom),(self.presetNameRect.width, contentbox.height/3))
+            self.serviceRect = pygame.Rect((self.providerRect.x, self.providerRect.bottom),(self.providerRect.width, contentbox.height/3))
+            serviceDetailsBox = pygame.Rect((contentbox.x,self.providerRect.y),(contentbox.width, self.providerRect.height+self.serviceRect.height)) # main content box
+            self.surface.fill(self.theme.colours.white, serviceDetailsBox)
+            self.largeFont = pygame.font.SysFont('freesans', self.theme.fontSysSizeOptimizeHeight(contentbox.height/3, 'freesans')) # font for the large program details
+
+        if drawAll or self.presetName != self.renderedPresetName:
+            self.renderedPresetName = self.presetName
+            presetNameTextSurface = self.largeFont.render(self.presetName, True, self.theme.colours.black)
+            presetNameTextRect = presetNameTextSurface.get_rect()
+            presetNameTextRect.top = self.presetNameRect.top;
+            presetNameTextRect.left = self.presetNameRect.left
+            self.surface.fill(self.theme.colours.backgroundMenu, self.presetNameRect)
+            self.surface.blit(presetNameTextSurface, presetNameTextRect, pygame.Rect((0,0),self.presetNameRect.size))
+
+        if drawAll or self.provider != self.renderedProvider:
+            self.renderedProvider = self.provider
+            providerTextSurface = self.largeFont.render(self.provider, True, self.theme.colours.black)
+            providerTextRect = providerTextSurface.get_rect()
+            providerTextRect.top = self.providerRect.top
+            providerTextRect.left = self.providerRect.left
+            self.surface.fill(self.theme.colours.white, self.providerRect)
+            self.surface.blit(providerTextSurface, providerTextRect, pygame.Rect((0,0),self.providerRect.size))
+
+        if drawAll or self.service != self.renderedService:
+            self.renderedService = self.service
+            serviceTextSurface = self.largeFont.render(self.service, True, self.theme.colours.black)
+            serviceTextRect = serviceTextSurface.get_rect()
+            serviceTextRect.top = self.serviceRect.top;
+            serviceTextRect.left = self.serviceRect.left
+            self.surface.fill(self.theme.colours.white, self.serviceRect)
+            self.surface.blit(serviceTextSurface, serviceTextRect, pygame.Rect((0,0),self.serviceRect.size))
+
         super().redraw(rects, deferRedraw)

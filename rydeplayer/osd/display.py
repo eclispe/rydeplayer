@@ -23,6 +23,7 @@ import enum
 class AvailableModules(enum.Enum):
     MUTE = enum.auto()
     MER = enum.auto()
+    PROGRAM = enum.auto()
 
 # Group of modules and layout parameters
 class Group(object):
@@ -56,7 +57,7 @@ class Group(object):
 class Config(object):
     def __init__(self, theme):
         self.theme = theme
-        self.activeGroup={AvailableModules.MUTE:None, AvailableModules.MER:None}
+        self.activeGroup={AvailableModules.MUTE:None, AvailableModules.MER:None, AvailableModules.PROGRAM:None}
         self.inactiveGroup={AvailableModules.MUTE:None}
 
     def getActiveGroup(self):
@@ -168,6 +169,10 @@ class Controller(object):
         self.player.addMuteCallback(self.modules[AvailableModules.MUTE].updateVal)
         self.modules[AvailableModules.MER]=rydeplayer.osd.modules.mer(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.02, 0.14, 0.2, 0.15))
         self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.MER].updateVal)
+        self.modules[AvailableModules.PROGRAM]=rydeplayer.osd.modules.program(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.BC, 0, 0.02, 0.75, 0.2))
+        self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.PROGRAM].updateVal)
+        self.tunerConfig.addCallbackFunction(self._updatePresetName)
+        self._updatePresetName(self.tunerConfig)
         # Initalise groups
         self.activeGroup = Group(self.theme, self)
         self.activeGroup.setModules(config.getActiveGroup())
@@ -176,7 +181,10 @@ class Controller(object):
         # Start with inactive group displayed
         self.inactiveGroup.activate()
         self.activePriority = None
-    
+
+    def _updatePresetName(self, preset):
+        self.modules[AvailableModules.PROGRAM].updateVal(self.player.getPresetName(preset))
+
     def getModules(self):
         return self.modules
 
