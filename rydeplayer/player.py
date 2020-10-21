@@ -72,11 +72,26 @@ class Theme(object):
         if datum is rydeplayer.common.datumCornerEnum.TR:
             outX = self.displayWidth - ((xEdgeDistance+width)*self.displayHeight)
             outY = yEdgeDistance*self.displayHeight
+        elif datum is rydeplayer.common.datumCornerEnum.TC:
+            outX = (self.displayWidth/2) - (((width/2)-xEdgeDistance)*self.displayHeight)
+            outY = yEdgeDistance*self.displayHeight
         elif datum is rydeplayer.common.datumCornerEnum.TL:
             outX = xEdgeDistance*self.displayHeight
             outY = yEdgeDistance*self.displayHeight
+        elif datum is rydeplayer.common.datumCornerEnum.CR:
+            outX = self.displayWidth - ((xEdgeDistance+width)*self.displayHeight)
+            outY = (self.displayHeight/2) - (((height/2)-yEdgeDistance)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.CC:
+            outX = (self.displayWidth/2) - (((width/2)-xEdgeDistance)*self.displayHeight)
+            outY = (self.displayHeight/2) - (((height/2)-yEdgeDistance)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.CL:
+            outX = xEdgeDistance*self.displayHeight
+            outY = (self.displayHeight/2) - (((height/2)-yEdgeDistance)*self.displayHeight)
         elif datum is rydeplayer.common.datumCornerEnum.BR:
             outX = self.displayWidth - ((xEdgeDistance+width)*self.displayHeight)
+            outY = self.displayHeight - ((yEdgeDistance+height)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.BC:
+            outX = (self.displayWidth/2) - (((width/2)-xEdgeDistance)*self.displayHeight)
             outY = self.displayHeight - ((yEdgeDistance+height)*self.displayHeight)
         elif datum is rydeplayer.common.datumCornerEnum.BL:
             outX = xEdgeDistance*self.displayHeight

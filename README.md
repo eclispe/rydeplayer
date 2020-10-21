@@ -55,8 +55,8 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
 * ```osd``` This section contains the configuration for the on screen display
   * ```active``` Contains a list of modules and their configurations for when the OSD is active. Include any modules from the list below that should be displayed in this mode.
     * ```MUTE``` Displays a mute icon when the player is muted. Set value to ```null``` for default size and location, use all sub elements to set size and location.
-      * ```datum``` Where to measure the new location relative to. Options: ```TL``` Top Left, ```TR``` Top Right, ```BL``` Bottom Left or ```BR``` Bottom Right.
-      * ```x``` The fraction of the display height the left/right (depending on datum) of the module is from the left/right of the display, valid values 0-1.
+      * ```datum``` Where to measure the new location relative to. Options: ```TL``` Top Left, ```TC``` Top Centre, ```TR``` Top Right, ```CR``` Centre Right, ```CC``` Centre both, ```CL``` Centre Left, ```BL``` Bottom Left, ```BC``` Bottom Centre or ```BR``` Bottom Right.
+      * ```x``` The fraction of the display height the left/right (depending on datum) of the module is from the left/right of the display, valid values 0-1 for edges or -0.5 to 0.5 for centres.
       * ```y``` Same as for ```x``` but what fraction of the display height is the top/bottom (depending on datum).
       * ```w``` The width of the module as a fraction of the display height, valid values 0-1.
       * ```x``` Same as for ```w``` but for module height.

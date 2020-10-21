@@ -106,14 +106,16 @@ class Config(object):
             return (perfectConfig, newConfig)
         return (perfectConfig, None)
 
-    # helper for rectangle parser to check values are in the range 0-1
-    def _checkScaleRange(self, collection, index):
+    # helper for rectangle parser to check values are in the range 0-1 for edge or -0.5 to 0.5 for center
+    def _checkScaleRange(self, collection, index, edge=True):
         if index in collection:
             value = collection[index]
             if isinstance(value, int): #convert ints to float, fixes 0 and 1
                 value = float(value)
             if isinstance(value, float):
-                if value >= 0 and value <= 1:
+                if edge and value >= 0 and value <= 1:
+                    return True
+                elif (not edge) and value >= -0.5 and value <= 0.5:
                     return True
         return False
 
@@ -125,10 +127,10 @@ class Config(object):
             outRect = None
             if 'datum' in config:
                 if str(config['datum']).upper() in rydeplayer.common.datumCornerEnum.__members__.keys():
-                    if self._checkScaleRange(config, 'x'):
-                        if self._checkScaleRange(config, 'y'):
-                            if self._checkScaleRange(config, 'w'):
-                                if self._checkScaleRange(config, 'h'):
+                    if self._checkScaleRange(config, 'x', str(config['datum']).upper() in ["TR", "TL", "CR", "CL", "BR", "BL"]):
+                        if self._checkScaleRange(config, 'y', str(config['datum']).upper() in ["TR", "TC", "TR", "BR", "BC", "BL"]):
+                            if self._checkScaleRange(config, 'w', True):
+                                if self._checkScaleRange(config, 'h', True):
                                     outRect = self.theme.relativeRect(rydeplayer.common.datumCornerEnum.__members__[str(config['datum']).upper()], config['x'], config['y'], config['w'], config['h'])
                                 else:
                                     print("Invalid or missing height value, using defaults")

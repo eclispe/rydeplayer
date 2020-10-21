@@ -58,8 +58,13 @@ class shutdownBehavior(enum.Enum):
 # Enum defining box corners to be used as datums
 class datumCornerEnum(enum.Enum):
     TR = enum.auto()
+    TC = enum.auto()
     TL = enum.auto()
+    CR = enum.auto()
+    CC = enum.auto()
+    CL = enum.auto()
     BR = enum.auto()
+    BC = enum.auto()
     BL = enum.auto()
 
 class validTracker(object):
