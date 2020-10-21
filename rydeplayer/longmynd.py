@@ -524,7 +524,7 @@ class tunerConfig(rydeplayer.common.validTracker):
 class tunerStatus(object):
     def __init__(self):
         self.onChangeCallbacks = []
-        self.mer = 0
+        self.mer = None
 
     def addOnChangeCallback(self, callback):
         self.onChangeCallbacks.append(callback)
@@ -538,13 +538,19 @@ class tunerStatus(object):
 
     def setMer(self, newval):
         if(isinstance(newval, float)):
-            self.mer = newval
-            self.onChangeFire()
-            return True
+            if self.mer != newval:
+                self.mer = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
         elif(isinstance(newval, int)):
-            self.mer = float(int)
-            self.onChangeFire()
-            return True
+            if self.mer != float(newval):
+                self.mer = float(newval)
+                self.onChangeFire()
+                return True
+            else:
+                return False
         else:
             return False
 
