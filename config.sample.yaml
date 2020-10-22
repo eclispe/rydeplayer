@@ -69,6 +69,9 @@ gpio:
             OSDOFF: 26
 
 osd:
+    timers:
+        USERTRIGGER: 10
+        PROGRAMTRIGGER: 10
     active:
         MUTE:
             datum: TR

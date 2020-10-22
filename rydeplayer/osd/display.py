@@ -17,13 +17,18 @@
 import pydispmanx, pygame
 import rydeplayer.longmynd
 import rydeplayer.common
-import enum
+import enum, queue, socket, threading
 
 # Enum containing a list of all possible modules
 class AvailableModules(enum.Enum):
     MUTE = enum.auto()
     MER = enum.auto()
     PROGRAM = enum.auto()
+
+# Enum containing configurable timer lengths
+class TimerLength(enum.Enum):
+    PROGRAMTRIGGER = enum.auto()
+    USERTRIGGER = enum.auto()
 
 # Group of modules and layout parameters
 class Group(object):
@@ -59,12 +64,19 @@ class Config(object):
         self.theme = theme
         self.activeGroup={AvailableModules.MUTE:None, AvailableModules.MER:None, AvailableModules.PROGRAM:None}
         self.inactiveGroup={AvailableModules.MUTE:None}
+        self.timers={TimerLength.PROGRAMTRIGGER: 5, TimerLength.USERTRIGGER: 5}
 
     def getActiveGroup(self):
         return self.activeGroup
 
     def getInactiveGroup(self):
         return self.inactiveGroup
+
+    def getTimerLength(self, timer):
+        if isinstance(timer, TimerLength) and timer in self.timers:
+            return self.timers[timer]
+        else:
+            return None
    
     # Parse OSD config from config file format
     def loadConfig(self, config):
@@ -80,6 +92,34 @@ class Config(object):
                 if tmpGroupConfig is not None:
                     self.inactiveGroup = tmpGroupConfig
                 perfectConfig = perfectConfig and tmpPerfectConfig
+            if 'timers' in config:
+                if isinstance(config['timers'], dict):
+                    unusedtimers = list(config['timers'].keys())
+                    for thisTimer in TimerLength:
+                        if thisTimer.name in config['timers']:
+                            timerLength = config['timers'][thisTimer.name]
+                            if timerLength is None:
+                                self.timers[thisTimer] = None
+                                unusedtimers.remove(thisTimer.name)
+                            else:
+                                if isinstance(timerLength, int):
+                                    timerLength = float(timerLength)
+                                if isinstance(timerLength, float):
+                                    if timerLength >= 0:
+                                        self.timers[thisTimer] = timerLength
+                                        unusedtimers.remove(thisTimer.name)
+                                    else:
+                                        print("Timers must be 0 or greater")
+                                        perfectConfig = False
+                                else:
+                                    print("Timer is not a number or null, skipping")
+                                    perfectConfig = False
+                    if len(unusedtimers) > 0:
+                        print("Unknown timers")
+                        print(unusedtimers)
+                else:
+                    print("GPIO timers is not a map, skipping")
+                    perfectConfig = False
         else:
             print("OSD config not valid, skipping")
             perfectConfig = False
@@ -102,8 +142,6 @@ class Config(object):
                     else:
                         newConfig[moduleId] = self._parseConfigRect(config[moduleId.name])
         if acceptableConfig:
-            print(config)
-            print(newConfig)
             return (perfectConfig, newConfig)
         return (perfectConfig, None)
 
@@ -181,6 +219,12 @@ class Controller(object):
         # Start with inactive group displayed
         self.inactiveGroup.activate()
         self.activePriority = None
+        # socket to notify the main loop of a timer expire
+        self.recvSockTimer, self.sendSockTimer = socket.socketpair()
+        # thread safe queue to store the timer events
+        self.timerEventQueue = queue.Queue()
+        # timer thread
+        self.timer = None
 
     def _updatePresetName(self, preset):
         self.modules[AvailableModules.PROGRAM].updateVal(self.player.getPresetName(preset))
@@ -213,17 +257,49 @@ class Controller(object):
         self.dispmanxlayer.updateLayer()
 
     # Activate the OSD activated group if not already active at a higer priority
-    def activate(self, priority):
-        if self.activePriority is None or self.activePriority > priority:
-            self.activeGroup.activate()
-            self.activePriority = priority
+    def activate(self, priority, deactivateAfter = None):
+        if self.activePriority is None or self.activePriority >= priority:
+            # if handed a config file reference, dereference it first
+            if isinstance(deactivateAfter, TimerLength):
+                deactivateAfter = self.config.getTimerLength(deactivateAfter)
+            # if the timer is 0 don't activate in the first place
+            if deactivateAfter is None or float(deactivateAfter) != float(0):
+                self.activeGroup.activate()
+                self.activePriority = priority
+                # set the deactivate timer
+                if deactivateAfter is not None:
+                    # cancel any old timers before setting the new one
+                    if self.timer is not None:
+                        self.timer.cancel()
+                    self.timer = threading.Timer(deactivateAfter, self.asyncDeactivate, [priority])
+                    self.timer.start()
 
     # Activate the OSD inactive group if it wasn't activated by a higer priority in the first place
     def deactivate(self, priority):
         if self.activePriority is not None and self.activePriority >= priority:
+            if self.timer is not None:
+                self.timer.cancel()
+                self.timer = None
             self.inactiveGroup.activate()
             self.activePriority = None
-    
+
+    # Threaded deactivate callback
+    def asyncDeactivate(self, priority):
+        self.timerEventQueue.put(priority)
+        self.sendSockTimer.send(b"\x00")
+
+    # fd for the timer notification socket
+    def getFDs(self):
+        return [self.recvSockTimer]
+
+    # handle the fd
+    def handleFD(self, fd):
+        while not self.timerEventQueue.empty():
+            fd.recv(1)
+            deactivatePriority = self.timerEventQueue.get()
+            self.deactivate(deactivatePriority)
+        return False
+
     # Destroy the layer on shutdown
     def __del__(self):
         del(self.surface)

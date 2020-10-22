@@ -53,6 +53,9 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
     * ```highgoing``` A map of high going events to BCM pin numbers.
     * ```lowgoing``` A map of low going events to BCM pin numbers.
 * ```osd``` This section contains the configuration for the on screen display
+  * ```timers``` Contains deactiate timers for various triggers in seconds, ```0``` disables the initial event, ```null``` disables the auto deactivate
+    * ```USERTRIGGER``` Activate triggered by user pressing select button
+    * ```PROGRAMTRIGGER``` Activated when a new or different signal is received
   * ```active``` Contains a list of modules and their configurations for when the OSD is active. Include any modules from the list below that should be displayed in this mode.
     * ```MUTE``` Displays a mute icon when the player is muted. Set value to ```null``` for default size and location, use all sub elements to set size and location.
       * ```datum``` Where to measure the new location relative to. Options: ```TL``` Top Left, ```TC``` Top Centre, ```TR``` Top Right, ```CR``` Centre Right, ```CC``` Centre both, ```CL``` Centre Left, ```BL``` Bottom Left, ```BC``` Bottom Centre or ```BR``` Bottom Right.

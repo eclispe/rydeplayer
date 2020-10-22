@@ -260,7 +260,7 @@ class Home(rydeplayer.states.gui.States):
     def get_event(self, event):
         #TODO: add OSD state machine
         if(event == rydeplayer.common.navEvent.SELECT):
-            self.osd.activate(3)
+            self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
         elif(event == rydeplayer.common.navEvent.BACK):
             self.osd.deactivate(3)
         elif(event == rydeplayer.common.navEvent.MUTE):
@@ -514,7 +514,7 @@ class player(object):
         # main event loop
         while not quit:
             # need to regen every loop, lm stdout handler changes on lm restart
-            fds = self.irMan.getFDs() + self.lmMan.getFDs() + self.gpioMan.getFDs()
+            fds = self.irMan.getFDs() + self.lmMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs()
             r, w, x = select.select(fds, [], [])
             for fd in r:
                 quit = self.handleEvent(fd)
@@ -564,6 +564,8 @@ class player(object):
             self.lmMan.handleFD(fd)
         elif(fd in self.gpioMan.getFDs()):
             quit = self.gpioMan.handleFD(fd)
+        elif(fd in self.osd.getFDs()):
+            quit = self.osd.handleFD(fd)
         return quit
 
     def updateState(self):
@@ -579,6 +581,7 @@ class player(object):
                     print("Param Restart")
                 if self.vlcPlayer.get_state() not in [vlc.State.Playing, vlc.State.Opening] and self.config.debug.autoplay:
                     self.vlcPlay()
+                    self.osd.activate(4, rydeplayer.osd.display.TimerLength.PROGRAMTRIGGER)
                 self.gpioMan.setRXgood(True)
             else:
                 self.playbackState.setState(rydeplayer.states.playback.States.NOLOCK)
