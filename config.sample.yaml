@@ -80,6 +80,7 @@ osd:
             w: 0.3
             h: 0.3
         MER: null
+        REPORT: null
         PROGRAM: null
     inactive:
         MUTE: null

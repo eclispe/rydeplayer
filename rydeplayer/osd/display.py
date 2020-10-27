@@ -23,6 +23,7 @@ import enum, queue, socket, threading
 class AvailableModules(enum.Enum):
     MUTE = enum.auto()
     MER = enum.auto()
+    REPORT = enum.auto()
     PROGRAM = enum.auto()
 
 # Enum containing configurable timer lengths
@@ -207,6 +208,8 @@ class Controller(object):
         self.player.addMuteCallback(self.modules[AvailableModules.MUTE].updateVal)
         self.modules[AvailableModules.MER]=rydeplayer.osd.modules.mer(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.02, 0.14, 0.2, 0.15))
         self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.MER].updateVal)
+        self.modules[AvailableModules.REPORT]=rydeplayer.osd.modules.report(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.02, 0.31, 0.2, 0.15))
+        self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.REPORT].updateVal)
         self.modules[AvailableModules.PROGRAM]=rydeplayer.osd.modules.program(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.BC, 0, 0.02, 0.75, 0.2))
         self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.PROGRAM].updateVal)
         self.tunerConfig.addCallbackFunction(self._updatePresetName)
