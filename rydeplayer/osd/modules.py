@@ -155,18 +155,26 @@ class program(generic):
         self.presetName = ""
         self.provider = ""
         self.service = ""
+        self.modulation = None
+        self.pids = {}
         # track the current rendered value, to check for rerender
         self.renderedPresetName = ""
         self.renderedProvider = ""
         self.renderedService = ""
+        self.renderedPIDs = {}
+        self.renderedModulation = None
         self.presetNameRect = None
         self.providerRect = None
         self.serviceRect = None
+        self.modulationRect = None
+        self.pidsRect = None
 
     def updateVal(self, newval):
         if(isinstance(newval, rydeplayer.longmynd.tunerStatus)):
             self.provider = newval.getProvider()
             self.service = newval.getService()
+            self.modulation = newval.getModulation()
+            self.pids = newval.getPIDs()
         elif(isinstance(newval, str)):
             self.presetName = newval
         self.redraw()
@@ -176,13 +184,21 @@ class program(generic):
         if self.renderedbox is None or self.renderedbox != self.rect:
             drawAll = True
             self.surface.fill(self.theme.colours.backgroundMenu)
-            contentbox = pygame.Rect((self.rect.height*0.1,self.rect.height*0.1),(self.rect.width-(self.rect.height*0.2), self.rect.height*0.8)) # main content box
-            self.presetNameRect = pygame.Rect((contentbox.left+self.rect.height*0.1, contentbox.top),(contentbox.width-(self.rect.height*0.2), contentbox.height/3))
-            self.providerRect = pygame.Rect((self.presetNameRect.x, self.presetNameRect.bottom),(self.presetNameRect.width, contentbox.height/3))
-            self.serviceRect = pygame.Rect((self.providerRect.x, self.providerRect.bottom),(self.providerRect.width, contentbox.height/3))
-            serviceDetailsBox = pygame.Rect((contentbox.x,self.providerRect.y),(contentbox.width, self.providerRect.height+self.serviceRect.height)) # main content box
+            # left box
+            contentboxleft = pygame.Rect((self.rect.height*0.15,self.rect.height*0.1),(((self.rect.width-(self.rect.height*0.5))/3)*2, self.rect.height*0.8)) # left content box
+            self.presetNameRect = pygame.Rect((contentboxleft.left, contentboxleft.top),(contentboxleft.width, contentboxleft.height/3))
+            self.providerRect = pygame.Rect((contentboxleft.x, self.presetNameRect.bottom),(contentboxleft.width, contentboxleft.height/3))
+            self.serviceRect = pygame.Rect((contentboxleft.x, self.providerRect.bottom),(contentboxleft.width, contentboxleft.height/3))
+            serviceDetailsBox = pygame.Rect((contentboxleft.x-self.rect.height*0.05,(contentboxleft.height/3)+contentboxleft.top),(contentboxleft.width+self.rect.height*0.1, (contentboxleft.height/3)*2))
             self.surface.fill(self.theme.colours.white, serviceDetailsBox)
-            self.largeFont = pygame.font.SysFont('freesans', self.theme.fontSysSizeOptimizeHeight(contentbox.height/3, 'freesans')) # font for the large program details
+            self.largeFont = pygame.font.SysFont('freesans', self.theme.fontSysSizeOptimizeHeight(contentboxleft.height/3, 'freesans')) # font for the large program details
+            # right box
+            contentboxright = pygame.Rect((contentboxleft.right+self.rect.height*0.2,self.rect.height*0.1),((self.rect.width-(self.rect.height*0.5))/3, self.rect.height*0.8)) # right content box
+            self.modulationRect = pygame.Rect((contentboxright.x,contentboxright.top),(contentboxright.width, contentboxright.height/3))
+            self.pidsRect = pygame.Rect((contentboxright.x,(contentboxright.height/3)+contentboxright.top),(contentboxright.width, (contentboxright.height/3)*2)) # 
+            pidsColBox = pygame.Rect((self.pidsRect.x-self.rect.height*0.05,self.pidsRect.top),(self.pidsRect.width+self.rect.height*0.1, self.pidsRect.height)) # pids content box
+            self.surface.fill(self.theme.colours.white, pidsColBox)
+            self.smallFont = pygame.font.SysFont('freesans', self.theme.fontSysSizeOptimizeHeight(self.pidsRect.height/4, 'freesans')) # font for the large program details
 
         if drawAll or self.presetName != self.renderedPresetName:
             self.renderedPresetName = self.presetName
@@ -206,9 +222,45 @@ class program(generic):
             self.renderedService = self.service
             serviceTextSurface = self.largeFont.render(self.service, True, self.theme.colours.black)
             serviceTextRect = serviceTextSurface.get_rect()
-            serviceTextRect.top = self.serviceRect.top;
+            serviceTextRect.top = self.serviceRect.top
             serviceTextRect.left = self.serviceRect.left
             self.surface.fill(self.theme.colours.white, self.serviceRect)
             self.surface.blit(serviceTextSurface, serviceTextRect, pygame.Rect((0,0),self.serviceRect.size))
+
+        if drawAll or self.moulation != self.renderedModulation:
+            self.renderedModulation = self.modulation
+            if self.modulation is None:
+                modstring = ""
+            else:
+                modstring = self.modulation.longName
+            modulationTextSurface = self.smallFont.render(modstring, True, self.theme.colours.black)
+            modulationTextRect = modulationTextSurface.get_rect()
+            modulationTextRect.centery = self.modulationRect.centery;
+            modulationTextRect.left = self.modulationRect.left
+            self.surface.fill(self.theme.colours.backgroundMenu, self.modulationRect)
+            self.surface.blit(modulationTextSurface, modulationTextRect, pygame.Rect((0,0),self.modulationRect.size))
+
+        if drawAll or self.pids != self.renderedPIDs:
+            self.renderedPIDs = self.pids
+            self.surface.fill(self.theme.colours.white, self.pidsRect)
+            rendered = 0
+            nexttop = self.pidsRect.top
+            pidlist = list(self.pids.keys())
+            pidlist.sort()
+            for pid in pidlist:
+                codec = self.pids[pid]
+                if len(self.pids) > 4 and rendered == 3:
+                    pidstr = "+"+str(len(self.pids)-3)+" more"
+                else:
+                    pidstr = str(pid)+": "+str(codec)
+                pidTextSurface = self.smallFont.render(pidstr, True, self.theme.colours.black)
+                pidTextRect = pidTextSurface.get_rect()
+                pidTextRect.top = nexttop
+                nexttop = pidTextRect.bottom
+                pidTextRect.left = self.pidsRect.left
+                self.surface.blit(pidTextSurface, pidTextRect, pygame.Rect((0,0),self.pidsRect.size))
+                rendered += 1
+                if rendered >= 4:
+                    break
 
         super().redraw(rects, deferRedraw)
