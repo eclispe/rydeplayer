@@ -785,6 +785,7 @@ class lmManager(object):
         self.lmstarted = False
         self.statusrecv = False
         self.activeConfig = config.copyConfig()
+        self.hasPIDs = False
         self.pidCacheWait = True
         self.pidCacheFault = False
         self.pidCache = {}
@@ -858,6 +859,9 @@ class lmManager(object):
                         self.tunerStatus.setDVBVersion(DVBVersionEnum.DVBS2)
                     else:
                         self.tunerStatus.setDVBVersion(None)
+                    if not self.hasPIDs:
+                        self.tunerStatus.setPIDs(self.pidCache)
+                    self.hasPIDs = False
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
                         self.stateMonotonic += 1
                     self.lastState['state'] = int(rawval)
@@ -866,7 +870,6 @@ class lmManager(object):
                         self.lastState['service'] = ""
                         self.lastState['modcode'] = None
                         self.lastState['pids'] = {}
-                        self.tunerStatus.setPIDs({})
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
                         self.stateMonotonic = 0
                 elif msgtype == 12:
@@ -883,6 +886,7 @@ class lmManager(object):
 
                 # PID list accumulator
                 if msgtype == 16: # ES PID
+                    self.hasPIDs = True
                     self.pidCacheWait = False
                     if self.pidCachePair[0] == None:
                         self.pidCachePair = (int(rawval), self.pidCachePair[1])
@@ -893,6 +897,7 @@ class lmManager(object):
                         self.pidCacheFault = True
                         print("pid cache fault")
                 elif msgtype == 17: # ES Type
+                    self.hasPIDs = True
                     self.pidCacheWait = False
                     if self.pidCachePair[1] == None:
                         self.pidCachePair = (self.pidCachePair[0], int(rawval))
