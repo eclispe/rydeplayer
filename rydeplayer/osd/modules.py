@@ -164,7 +164,7 @@ class report(generic):
         if self.report is None:
             reportText = "-"
         else:
-            reportText = str(self.report)
+            reportText = "D"+str(self.report)
         dynamicTextSurface = self.theme.outlineFontRender(reportText, self.dynamicfont, self.theme.colours.white, self.theme.colours.black, 1)
         self.dynamicTextRect = dynamicTextSurface.get_rect()
         self.dynamicTextRect.top = self.textbox.top
