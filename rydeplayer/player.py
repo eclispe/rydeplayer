@@ -222,7 +222,7 @@ class guiState(rydeplayer.states.gui.SuperStates):
 
         self.state_dict = {
             'menu': rydeplayer.states.gui.Menu(self.theme, 'home', mainMenuStates, "freq"),
-            'home': Home(self.theme, self.player, self.osd)
+            'home': Home(self.theme, self.osd)
         }
         # add callback to rederaw menu item if tuner data is updated
         config.tuner.freq.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['freq'], mainMenuStates['freq'].getSurfaceRects()))
@@ -244,15 +244,16 @@ class guiState(rydeplayer.states.gui.SuperStates):
                 self.osd.activate(1)
             elif event == rydeplayer.common.navEvent.OSDOFF:
                 self.osd.deactivate(1)
+            elif(event == rydeplayer.common.navEvent.MUTE):
+                self.player.toggleMute()
 
 
 # GUI state for when the menu isnt showing
 class Home(rydeplayer.states.gui.States):
-    def __init__(self, theme, player, osd):
+    def __init__(self, theme, osd):
         super().__init__(theme)
         self.next = 'menu'
         self.osd = osd
-        self.player = player
     def cleanup(self):
         None
     def startup(self):
@@ -263,8 +264,6 @@ class Home(rydeplayer.states.gui.States):
             self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
         elif(event == rydeplayer.common.navEvent.BACK):
             self.osd.deactivate(3)
-        elif(event == rydeplayer.common.navEvent.MUTE):
-            self.player.toggleMute()
         elif(event == rydeplayer.common.navEvent.MENU):
             self.done = True
 
