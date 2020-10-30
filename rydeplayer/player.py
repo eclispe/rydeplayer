@@ -244,6 +244,8 @@ class guiState(rydeplayer.states.gui.SuperStates):
                 self.osd.activate(1)
             elif event == rydeplayer.common.navEvent.OSDOFF:
                 self.osd.deactivate(1)
+            elif event == rydeplayer.common.navEvent.OSDTOG:
+                self.osd.toggle(2)
             elif(event == rydeplayer.common.navEvent.MUTE):
                 self.player.toggleMute()
 
@@ -263,7 +265,7 @@ class Home(rydeplayer.states.gui.States):
         if(event == rydeplayer.common.navEvent.SELECT):
             self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
         elif(event == rydeplayer.common.navEvent.BACK):
-            self.osd.deactivate(3)
+            self.osd.deactivate(2)
         elif(event == rydeplayer.common.navEvent.MENU):
             self.done = True
 

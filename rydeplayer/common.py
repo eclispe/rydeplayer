@@ -28,6 +28,7 @@ class navEvent(enum.Enum):
     MUTE   = (enum.auto(), None)
     OSDOFF = (enum.auto(), None)
     OSDON  = (enum.auto(), None)
+    OSDTOG = (enum.auto(), None)
     ZERO   = (enum.auto(), 0)
     ONE    = (enum.auto(), 1)
     TWO    = (enum.auto(), 2)

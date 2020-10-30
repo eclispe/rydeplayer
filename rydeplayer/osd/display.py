@@ -286,6 +286,12 @@ class Controller(object):
             self.inactiveGroup.activate()
             self.activePriority = None
 
+    def toggle(self, priority):
+        if self.activePriority is None or self.activePriority > priority:
+            self.activate(priority)
+        else:
+            self.deactivate(priority)
+
     # Threaded deactivate callback
     def asyncDeactivate(self, priority):
         self.timerEventQueue.put(priority)
