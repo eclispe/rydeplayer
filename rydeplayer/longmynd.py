@@ -864,6 +864,7 @@ class lmManager(object):
                     self.hasPIDs = False
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
                         self.stateMonotonic += 1
+                        self.changeRefState = copy.deepcopy(self.lastState)
                     self.lastState['state'] = int(rawval)
                     if int(rawval) < 3: # if it is not locked, reset some state
                         self.lastState['provider'] = ""
@@ -871,7 +872,8 @@ class lmManager(object):
                         self.lastState['modcode'] = None
                         self.lastState['pids'] = {}
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
-                        self.stateMonotonic = 0
+                        self.stateMonotonic += 1
+                        self.changeRefState = copy.deepcopy(self.lastState)
                 elif msgtype == 12:
                     self.tunerStatus.setMer(float(rawval)/10)
                 elif msgtype == 13:
