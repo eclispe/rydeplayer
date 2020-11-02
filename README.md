@@ -49,6 +49,24 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * ```repeatDelay``` The time between repeats once repeating has begun in ms.
   * ```rxGood``` The BCM pin number to output the reciver locked indication to. For example to output the signal on pin 7 set this to 4.
   * ```buttons``` A map of button names to BCM pin numbers.
+  * ```switches``` Container for switch event to BCM pin number mappings.
+    * ```highgoing``` A map of high going events to BCM pin numbers.
+    * ```lowgoing``` A map of low going events to BCM pin numbers.
+* ```osd``` This section contains the configuration for the on screen display
+  * ```timers``` Contains deactiate timers for various triggers in seconds, ```0``` disables the initial event, ```null``` disables the auto deactivate
+    * ```USERTRIGGER``` Activate triggered by user pressing select button
+    * ```PROGRAMTRIGGER``` Activated when a new or different signal is received
+  * ```active``` Contains a list of modules and their configurations for when the OSD is active. Include any modules from the list below that should be displayed in this mode.
+    * ```MUTE``` Displays a mute icon when the player is muted. Set value to ```null``` for default size and location, use all sub elements to set size and location.
+      * ```datum``` Where to measure the new location relative to. Options: ```TL``` Top Left, ```TC``` Top Centre, ```TR``` Top Right, ```CR``` Centre Right, ```CC``` Centre both, ```CL``` Centre Left, ```BL``` Bottom Left, ```BC``` Bottom Centre or ```BR``` Bottom Right.
+      * ```x``` The fraction of the display height the left/right (depending on datum) of the module is from the left/right of the display, valid values 0-1 for edges or -0.5 to 0.5 for centres.
+      * ```y``` Same as for ```x``` but what fraction of the display height is the top/bottom (depending on datum).
+      * ```w``` The width of the module as a fraction of the display height, valid values 0-1.
+      * ```x``` Same as for ```w``` but for module height.
+    * ```MER``` Displays the MER of the current recived signal, size/location configuration the same as for ```MUTE```.
+    * ```REPORT``` Displays the difference between the MER and the minimal viable MER for the current modulation and FEC, size/location configuration the same as for ```MUTE```.
+    * ```PROGRAM``` Displays the service, provider, preset name, modulation type and transport stream PID details for the current signal, size/location configuration the same as for ```MUTE```.
+  * ```inactive``` The same as the active list but for when the OSD is inactive.
 * ```shutdownBehavior``` The default shutdown option when the power button is double pressed. Choose from ```APPSTOP``` or ```APPREST``` to stop the player or restart the player respectively.
 * ```debug``` Debug options, for advanced users, do not rely on these, they may go away without notice
   * ```enableMenu``` Enable the debug menu entry

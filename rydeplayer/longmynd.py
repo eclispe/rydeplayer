@@ -30,6 +30,65 @@ class LOOffsetSideEnum(enum.Enum):
     HIGH = enum.auto()
     LOW = enum.auto()
 
+class DVBVersionEnum(enum.Enum):
+    DVBS = enum.auto()
+    DVBS2 = enum.auto()
+
+class DVBModulationEnum(enum.Enum):
+    S_1_2      = (enum.auto(), "DVB-S 1/2",          1.7)
+    S_2_3      = (enum.auto(), "DVB-S 2/3",          3.3)
+    S_3_4      = (enum.auto(), "DVB-S 3/4",          4.2)
+    S_5_6      = (enum.auto(), "DVB-S 5/6",          5.1)
+    S_6_7      = (enum.auto(), "DVB-S 6/7",          5.5)
+    S_7_8      = (enum.auto(), "DVB-S 7/8",          5.8)
+    S2_4_1_4   = (enum.auto(), "DVB-S2 QPSK 1/4",   -2.3)
+    S2_4_1_3   = (enum.auto(), "DVB-S2 QPSK 1/3",   -1.2)
+    S2_4_2_5   = (enum.auto(), "DVB-S2 QPSK 2/5",   -0.3)
+    S2_4_1_2   = (enum.auto(), "DVB-S2 QPSK 1/2",    1.0)
+    S2_4_3_5   = (enum.auto(), "DVB-S2 QPSK 3/5",    2.3)
+    S2_4_2_3   = (enum.auto(), "DVB-S2 QPSK 2/3",    3.1)
+    S2_4_3_4   = (enum.auto(), "DVB-S2 QPSK 3/4",    4.1)
+    S2_4_4_5   = (enum.auto(), "DVB-S2 QPSK 4/5",    4.7)
+    S2_4_5_6   = (enum.auto(), "DVB-S2 QPSK 5/6",    5.2)
+    S2_4_8_9   = (enum.auto(), "DVB-S2 QPSK 8/9",    6.2)
+    S2_4_9_10  = (enum.auto(), "DVB-S2 QPSK 9/10",   6.5)
+    S2_8_3_5   = (enum.auto(), "DVB-S2 8PSK 3/5",    5.5)
+    S2_8_2_3   = (enum.auto(), "DVB-S2 8PSK 2/3",    6.6)
+    S2_8_3_4   = (enum.auto(), "DVB-S2 8PSK 3/4",    7.9)
+    S2_8_5_6   = (enum.auto(), "DVB-S2 8PSK 5/6",    9.4)
+    S2_8_8_9   = (enum.auto(), "DVB-S2 8PSK 8/9",    10.7)
+    S2_8_9_10  = (enum.auto(), "DVB-S2 8PSK 9/10",   11.0)
+    S2_16_2_3  = (enum.auto(), "DVB-S2 16APSK 2/3",  9.0)
+    S2_16_3_4  = (enum.auto(), "DVB-S2 16APSK 3/4",  10.2)
+    S2_16_4_5  = (enum.auto(), "DVB-S2 16APSK 4/5",  11.0)
+    S2_16_5_6  = (enum.auto(), "DVB-S2 16APSK 5/6",  11.6)
+    S2_16_8_9  = (enum.auto(), "DVB-S2 16APSK 8/9",  12.9)
+    S2_16_9_10 = (enum.auto(), "DVB-S2 16APSK 9/10", 13.2)
+    S2_32_3_4  = (enum.auto(), "DVB-S2 32APSK 3/4",  12.8)
+    S2_32_4_5  = (enum.auto(), "DVB-S2 32APSK 4/5",  13.7)
+    S2_32_5_6  = (enum.auto(), "DVB-S2 32APSK 5/6",  14.3)
+    S2_32_8_9  = (enum.auto(), "DVB-S2 32APSK 8/9",  15.7)
+    S2_32_9_10 = (enum.auto(), "DVB-S2 32APSK 9/10", 16.1)
+
+    def __init__(self, enum, longName, threshold):
+        self.longName = longName
+        self.threshold = threshold
+    def __str__(self):
+        return self.longName
+
+class CodecEnum(enum.Enum):
+    MP2  = (enum.auto(), "MPEG-2")
+    MPA  = (enum.auto(), "MPA")
+    AAC  = (enum.auto(), "AAC")
+    H263 = (enum.auto(), "H.263")
+    H264 = (enum.auto(), "H.264")
+    H265 = (enum.auto(), "H.265")
+
+    def __init__(self, enum, longName):
+        self.longName = longName
+    def __str__(self):
+        return self.longName
+
 class tunerBand(object):
     def __init__(self):
         self.freq = 0
@@ -318,7 +377,7 @@ class tunerConfigIntList(rydeplayer.common.validTracker):
 class tunerConfig(rydeplayer.common.validTracker):
     def __init__(self):
         # default is QO-100 Beacon
-        self.updateCallback = None # function that is called when the config changes
+        self.updateCallbacks = [] # function that is called when the config changes
         self.band = tunerBand()
         self.band.setBand(0, LOOffsetSideEnum.LOW, PolarityEnum.NONE, inPortEnum.TOP, 0)
         self.tunerMinFreq = 144000
@@ -341,7 +400,7 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.band = band
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         self.updateValid()
-        self.runCallback()
+        self.runCallbacks()
 
     def setConfigToMatch(self, fromConfig):
         self.setFrequencies(fromConfig.freq.getValues())
@@ -448,7 +507,7 @@ class tunerConfig(rydeplayer.common.validTracker):
 
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
         if configUpdated: # run the callback if we chaged something
-            self.runCallback()
+            self.runCallbacks()
         return perfectConfig
 
     def setFrequencies(self, newFreq):
@@ -462,7 +521,7 @@ class tunerConfig(rydeplayer.common.validTracker):
                    self.freq.append(thisNewFreq)
         else:
             self.freq.setSingleValue(newFreq)
-        self.runCallback()
+        self.runCallbacks()
 
     def setSymbolRates(self, newSr):
         if isinstance(newSr, collections.abc.Iterable):
@@ -475,15 +534,17 @@ class tunerConfig(rydeplayer.common.validTracker):
                    self.sr.append(thisNewSr)
         else:
             self.sr.setSingleValue(newSr)
-        self.runCallback()
+        self.runCallbacks()
     def setBand(self, newBand):
         self.band = newBand
         self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
-        self.runCallback()
+        self.runCallbacks()
     def getBand(self):
         return self.band
-    def setCallbackFunction(self, newCallback):
-        self.updateCallback = newCallback
+    def addCallbackFunction(self, newCallback):
+        self.updateCallbacks.append(newCallback)
+    def removeCallbackFunction(self, oldCallback):
+        self.updateCallbacks.remove(oldCallback)
 
     def updateValid(self):
         return super().updateValid(self.calcValid())
@@ -494,9 +555,9 @@ class tunerConfig(rydeplayer.common.validTracker):
         newValid = newValid and self.sr.isValid()
         return newValid;
 
-    def runCallback(self):
-        if self.updateCallback is not None :
-            self.updateCallback(self)
+    def runCallbacks(self):
+        for callback in self.updateCallbacks:
+            callback(self)
     def copyConfig(self):
         # return a copy of the config details but with no callback connected
         newConfig = tunerConfig()
@@ -517,6 +578,181 @@ class tunerConfig(rydeplayer.common.validTracker):
         output += "        IF offset: "+self.band.getOffsetStr()+"\n"
         output += "      Symbol Rate: "+str(self.sr)+"\n"
         return output
+
+# Container for tuner status data with change callbacks
+class tunerStatus(object):
+    def __init__(self):
+        self.onChangeCallbacks = []
+        self.mer = None
+        self.provider = ""
+        self.service = ""
+        self.dvbVersion = None
+        self.modulation = None
+        self.pids = {}
+
+    def addOnChangeCallback(self, callback):
+        self.onChangeCallbacks.append(callback)
+
+    def removeOnChangeCallback(self, callback):
+        self.onChangeCallbacks.remove(callback)
+
+    def onChangeFire(self):
+        for callback in self.onChangeCallbacks:
+            callback(self)
+
+    def setProvider(self, newval):
+        if(isinstance(newval, str)):
+            if self.provider != newval:
+                self.provider = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setService(self, newval):
+        if(isinstance(newval, str)):
+            if self.service != newval:
+                self.service = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setMer(self, newval):
+        if(isinstance(newval, float)):
+            if self.mer != newval:
+                self.mer = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        elif(isinstance(newval, int)):
+            if self.mer != float(newval):
+                self.mer = float(newval)
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setDVBVersion(self, newval):
+        if(isinstance(newval, DVBVersionEnum) or newval is None):
+            if(newval != self.dvbVersion):
+                self.dvbVersion = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setModcode(self, newval):
+        dvbs = {
+            0: DVBModulationEnum.S_1_2,
+            1: DVBModulationEnum.S_2_3,
+            2: DVBModulationEnum.S_3_4,
+            3: DVBModulationEnum.S_5_6,
+            4: DVBModulationEnum.S_6_7,
+            5: DVBModulationEnum.S_7_8
+            }
+        dvbs2 = {
+            1:  DVBModulationEnum.S2_4_1_4,
+            2:  DVBModulationEnum.S2_4_1_3,
+            3:  DVBModulationEnum.S2_4_2_5,
+            4:  DVBModulationEnum.S2_4_1_2,
+            5:  DVBModulationEnum.S2_4_3_5,
+            6:  DVBModulationEnum.S2_4_2_3,
+            7:  DVBModulationEnum.S2_4_3_4,
+            8:  DVBModulationEnum.S2_4_4_5,
+            9:  DVBModulationEnum.S2_4_5_6,
+            10: DVBModulationEnum.S2_4_8_9,
+            11: DVBModulationEnum.S2_4_9_10,
+            12: DVBModulationEnum.S2_8_3_5,
+            13: DVBModulationEnum.S2_8_2_3,
+            14: DVBModulationEnum.S2_8_3_4,
+            15: DVBModulationEnum.S2_8_5_6,
+            16: DVBModulationEnum.S2_8_8_9,
+            17: DVBModulationEnum.S2_8_9_10,
+            18: DVBModulationEnum.S2_16_2_3,
+            19: DVBModulationEnum.S2_16_3_4,
+            20: DVBModulationEnum.S2_16_4_5,
+            21: DVBModulationEnum.S2_16_5_6,
+            22: DVBModulationEnum.S2_16_8_9,
+            23: DVBModulationEnum.S2_16_9_10,
+            24: DVBModulationEnum.S2_32_3_4,
+            25: DVBModulationEnum.S2_32_4_5,
+            26: DVBModulationEnum.S2_32_5_6,
+            27: DVBModulationEnum.S2_32_8_9,
+            28: DVBModulationEnum.S2_32_9_10
+            }
+        if(isinstance(newval, int)):
+            newMod = None
+            if(self.dvbVersion == DVBVersionEnum.DVBS):
+                if(newval in dvbs):
+                    newMod = dvbs[newval]
+                else:
+                    return False
+            elif(self.dvbVersion == DVBVersionEnum.DVBS2):
+                if(newval in dvbs2):
+                    newMod = dvbs2[newval]
+                else:
+                    return False
+            elif(self.dvbVersion is None):
+                newMod = None
+            else:
+                return False
+            if(newMod != self.modulation):
+                self.modulation = newMod
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setPIDs(self, newval):
+        codecmap = {
+             2:CodecEnum.MP2,
+             3:CodecEnum.MPA,
+             4:CodecEnum.MPA,
+            15:CodecEnum.AAC,
+            16:CodecEnum.H263,
+            27:CodecEnum.H264,
+            32:CodecEnum.MPA,
+            36:CodecEnum.H265,
+            }
+        newPIDs = {}
+        for pid, codec in newval.items():
+            if codec in codecmap:
+                newPIDs[pid] = codecmap[codec]
+            else:
+                newPIDs[pid] = str(codec)+"?"
+        if self.pids != newPIDs:
+            self.pids = newPIDs
+            self.onChangeFire()
+            return True
+        else:
+           return False
+
+    def getMer(self):
+        return self.mer
+
+    def getModulation(self):
+        return self.modulation
+
+    def getPIDs(self):
+        return self.pids
+
+    def getProvider(self):
+        return self.provider
+
+    def getService(self):
+        return self.service
 
 class lmManager(object):
     def __init__(self, config, lmpath, mediaFIFOpath, statusFIFOpath, tsTimeout):
@@ -549,6 +785,7 @@ class lmManager(object):
         self.lmstarted = False
         self.statusrecv = False
         self.activeConfig = config.copyConfig()
+        self.hasPIDs = False
         self.pidCacheWait = True
         self.pidCacheFault = False
         self.pidCache = {}
@@ -561,6 +798,7 @@ class lmManager(object):
         self.lastState = { 'state':None, 'provider': '', 'service': '', 'modcode': None, 'pids': {} }
         self.changeRefState = copy.deepcopy(self.lastState)
         self.stateMonotonic = 0
+        self.tunerStatus = tunerStatus()
 
     def reconfig(self, config):
         """reconfigures longmynd"""
@@ -575,6 +813,8 @@ class lmManager(object):
         return self.vlcMediaFd
     def getFDs(self):
         return [self.statusFIFOfd, self.stdoutReadfd]
+    def getStatus(self):
+        return self.tunerStatus
     def handleFD(self, fd):
         """handles a file descriptor that has data to read"""
         fdCallbacks = dict()
@@ -613,25 +853,40 @@ class lmManager(object):
                 rawtype,rawval = line[1:].rstrip().split(',',1)
                 msgtype = int(rawtype)
                 if msgtype == 1: # State
+                    if int(rawval) == 3:
+                        self.tunerStatus.setDVBVersion(DVBVersionEnum.DVBS)
+                    elif int(rawval) == 4:
+                        self.tunerStatus.setDVBVersion(DVBVersionEnum.DVBS2)
+                    else:
+                        self.tunerStatus.setDVBVersion(None)
+                    if not self.hasPIDs:
+                        self.tunerStatus.setPIDs(self.pidCache)
+                    self.hasPIDs = False
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
                         self.stateMonotonic += 1
                     self.lastState['state'] = int(rawval)
-                    if int(rawval) < 3: # if it nis ot locked, reset some state
+                    if int(rawval) < 3: # if it is not locked, reset some state
                         self.lastState['provider'] = ""
                         self.lastState['service'] = ""
                         self.lastState['modcode'] = None
                         self.lastState['pids'] = {}
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
                         self.stateMonotonic = 0
+                elif msgtype == 12:
+                    self.tunerStatus.setMer(float(rawval)/10)
                 elif msgtype == 13:
+                    self.tunerStatus.setProvider(str(rawval))
                     self.lastState['provider'] = rawval
                 elif msgtype == 14:
+                    self.tunerStatus.setService(str(rawval))
                     self.lastState['service'] = rawval
                 elif msgtype == 18:
+                    self.tunerStatus.setModcode(int(rawval))
                     self.lastState['modcode'] = int(rawval)
 
                 # PID list accumulator
                 if msgtype == 16: # ES PID
+                    self.hasPIDs = True
                     self.pidCacheWait = False
                     if self.pidCachePair[0] == None:
                         self.pidCachePair = (int(rawval), self.pidCachePair[1])
@@ -642,6 +897,7 @@ class lmManager(object):
                         self.pidCacheFault = True
                         print("pid cache fault")
                 elif msgtype == 17: # ES Type
+                    self.hasPIDs = True
                     self.pidCacheWait = False
                     if self.pidCachePair[1] == None:
                         self.pidCachePair = (self.pidCachePair[0], int(rawval))
@@ -655,6 +911,7 @@ class lmManager(object):
                 elif not self.pidCacheWait:
                     if not self.pidCacheFault:
                         self.lastState['pids'] = self.pidCache
+                        self.tunerStatus.setPIDs(self.pidCache)
                     self.pidCacheFault = False
                     self.pidCacheWait = True
                     self.pidCache = {}

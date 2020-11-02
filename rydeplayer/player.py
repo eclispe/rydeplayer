@@ -21,6 +21,8 @@ import rydeplayer.gpio
 import rydeplayer.common
 import rydeplayer.states.gui
 import rydeplayer.states.playback
+import rydeplayer.osd.display
+import rydeplayer.osd.modules
 
 # container for the theme
 class Theme(object):
@@ -36,15 +38,19 @@ class Theme(object):
             'backgroundSubMenu': (57,169,251,255),
             'backgroundPlayState': (255,0,0,255),
             })
-        self.menuWidth = int(displaySize[0]/4)
-        self.menuHeight = int(displaySize[1])
+        self.displayWidth = int(displaySize[0])
+        self.displayHeight = int(displaySize[1])
+        self.menuWidth = int(self.displayWidth/4)
+        self.menuHeight = self.displayHeight
         playStateTitleFontSize=self.fontSysSizeOptimize('Not Loaded', displaySize[0]/2, 'freesans')
         menuH1FontSize=self.fontSysSizeOptimize('BATC Ryde Project', self.menuWidth*0.85, 'freesans')
         self.fonts = type('fonts', (object,), {
             'menuH1': pygame.font.SysFont('freesans', menuH1FontSize),
             'playStateTitle' :  pygame.font.SysFont('freesans', playStateTitleFontSize),
             })
+        self._circlecache = {}
         self.logofile = pkg_resources.resource_stream('rydeplayer.resources', 'logo_menu.png')
+        self.muteicon = pkg_resources.resource_stream('rydeplayer.resources', 'icon_mute.png')
 
     # calculate the largest font size that you can render the given test in as still be less than width
     def fontSysSizeOptimize(self, text, width, fontname):
@@ -58,6 +64,94 @@ class Theme(object):
             else:
                 fontsize += 1
         return fontsize
+
+    # calculate the largest font size that has a line height less than height
+    def fontSysSizeOptimizeHeight(self, height, fontname):
+        fontsize = -1
+        while True:
+            fontCandidate = pygame.font.SysFont(fontname, fontsize+1)
+            fontheight = fontCandidate.get_linesize()
+            del(fontCandidate)
+            if(fontheight > height):
+                break
+            else:
+                fontsize += 1
+        return fontsize
+
+    # size and position a pygame rectangle using screen size independent units and a datum corner
+    def relativeRect(self, datum, xEdgeDistance, yEdgeDistance, width, height):
+        outwidth = self.displayHeight*width
+        outheight = self.displayHeight*height
+        if datum is rydeplayer.common.datumCornerEnum.TR:
+            outX = self.displayWidth - ((xEdgeDistance+width)*self.displayHeight)
+            outY = yEdgeDistance*self.displayHeight
+        elif datum is rydeplayer.common.datumCornerEnum.TC:
+            outX = (self.displayWidth/2) - (((width/2)-xEdgeDistance)*self.displayHeight)
+            outY = yEdgeDistance*self.displayHeight
+        elif datum is rydeplayer.common.datumCornerEnum.TL:
+            outX = xEdgeDistance*self.displayHeight
+            outY = yEdgeDistance*self.displayHeight
+        elif datum is rydeplayer.common.datumCornerEnum.CR:
+            outX = self.displayWidth - ((xEdgeDistance+width)*self.displayHeight)
+            outY = (self.displayHeight/2) - (((height/2)-yEdgeDistance)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.CC:
+            outX = (self.displayWidth/2) - (((width/2)-xEdgeDistance)*self.displayHeight)
+            outY = (self.displayHeight/2) - (((height/2)-yEdgeDistance)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.CL:
+            outX = xEdgeDistance*self.displayHeight
+            outY = (self.displayHeight/2) - (((height/2)-yEdgeDistance)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.BR:
+            outX = self.displayWidth - ((xEdgeDistance+width)*self.displayHeight)
+            outY = self.displayHeight - ((yEdgeDistance+height)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.BC:
+            outX = (self.displayWidth/2) - (((width/2)-xEdgeDistance)*self.displayHeight)
+            outY = self.displayHeight - ((yEdgeDistance+height)*self.displayHeight)
+        elif datum is rydeplayer.common.datumCornerEnum.BL:
+            outX = xEdgeDistance*self.displayHeight
+            outY = self.displayHeight - ((yEdgeDistance+height)*self.displayHeight)
+        return pygame.Rect((outX, outY, outwidth, outheight))
+
+    # helper function for outline font rendering
+    def _circlepoints(self,r):
+        r = int(round(r))
+        if r in self._circlecache:
+            return self._circlecache[r]
+        x, y, e = r, 0, 1 - r
+        self._circlecache[r] = points = []
+        while x >= y:
+            points.append((x, y))
+            y += 1
+            if e < 0:
+                e += 2 * y - 1
+            else:
+                x -= 1
+                e += 2 * (y - x) - 1
+        points += [(y, x) for x, y in points if x > y]
+        points += [(-x, y) for x, y in points if x]
+        points += [(x, -y) for x, y in points if y]
+        points.sort()
+        return points
+
+    # render font with different coloured outline
+    def outlineFontRender(self, text, font, gfcolor, ocolor, opx=2):
+        textsurface = font.render(text, True, gfcolor)
+        w = textsurface.get_width() + 2 * opx
+        h = font.get_height()
+
+        osurf = pygame.Surface((w, h + 2 * opx), pygame.SRCALPHA)
+        osurf.fill((0, 0, 0, 0))
+
+        surf = osurf.copy()
+
+        osurf.blit(font.render(text, True, ocolor), (0, 0))
+
+        for dx, dy in self._circlepoints(opx):
+            surf.blit(osurf, (dx + opx, dy + opx))
+
+        surf.blit(textsurface, (opx, opx))
+        return surf
+
+
 
 # power menu UI state machine
 class SubMenuPower(rydeplayer.states.gui.ListSelect):
@@ -81,17 +175,19 @@ class SubMenuPower(rydeplayer.states.gui.ListSelect):
 
 # main UI state machine
 class guiState(rydeplayer.states.gui.SuperStates):
-    def __init__(self, theme, shutdownBehaviorDefault):
+    def __init__(self, theme, shutdownBehaviorDefault, player, osd):
         super().__init__(theme)
         self.done = False
+        self.player = player
+        self.osd = osd
         self.shutdownBehaviorDefault = shutdownBehaviorDefault
         self.shutdownState = rydeplayer.common.shutdownBehavior.APPSTOP
     def startup(self, config, debugFunctions):
         # main menu states, order is important to get menus and sub menus to display in the right place
         mainMenuStates = {
-            'freq-sel' : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'freq', 'kHz', 'Freq', config.tuner.freq, config.tuner.runCallback),
+            'freq-sel' : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'freq', 'kHz', 'Freq', config.tuner.freq, config.tuner.runCallbacks),
             'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "power", "sr", "freq-sel", config.tuner.freq),
-            'sr-sel'   : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'sr', 'kS', 'SR', config.tuner.sr, config.tuner.runCallback),
+            'sr-sel'   : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'sr', 'kS', 'SR', config.tuner.sr, config.tuner.runCallbacks),
             'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "band", "sr-sel", config.tuner.sr),
             'band-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'band', config.bands, config.tuner.getBand, config.tuner.setBand),
             'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "preset", "band-sel"),
@@ -126,7 +222,7 @@ class guiState(rydeplayer.states.gui.SuperStates):
 
         self.state_dict = {
             'menu': rydeplayer.states.gui.Menu(self.theme, 'home', mainMenuStates, "freq"),
-            'home': Home(self.theme)
+            'home': Home(self.theme, self.osd)
         }
         # add callback to rederaw menu item if tuner data is updated
         config.tuner.freq.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['freq'], mainMenuStates['freq'].getSurfaceRects()))
@@ -144,12 +240,22 @@ class guiState(rydeplayer.states.gui.SuperStates):
         if not self.state.get_event(event):
             if event == rydeplayer.common.navEvent.POWER:
                 self.setStateStack([self.shutdownBehaviorDefault,'power-sel','menu'])
+            elif event == rydeplayer.common.navEvent.OSDON:
+                self.osd.activate(1)
+            elif event == rydeplayer.common.navEvent.OSDOFF:
+                self.osd.deactivate(1)
+            elif event == rydeplayer.common.navEvent.OSDTOG:
+                self.osd.toggle(2)
+            elif(event == rydeplayer.common.navEvent.MUTE):
+                self.player.toggleMute()
+
 
 # GUI state for when the menu isnt showing
 class Home(rydeplayer.states.gui.States):
-    def __init__(self, theme):
+    def __init__(self, theme, osd):
         super().__init__(theme)
         self.next = 'menu'
+        self.osd = osd
     def cleanup(self):
         None
     def startup(self):
@@ -157,12 +263,14 @@ class Home(rydeplayer.states.gui.States):
     def get_event(self, event):
         #TODO: add OSD state machine
         if(event == rydeplayer.common.navEvent.SELECT):
-            print('OSD')
+            self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
+        elif(event == rydeplayer.common.navEvent.BACK):
+            self.osd.deactivate(2)
         elif(event == rydeplayer.common.navEvent.MENU):
             self.done = True
 
 class rydeConfig(object):
-    def __init__(self):
+    def __init__(self, theme):
         self.ir = ir.irConfig()
         self.gpio = rydeplayer.gpio.gpioConfig()
         self.tuner = longmynd.tunerConfig()
@@ -177,6 +285,7 @@ class rydeConfig(object):
         defaultBand = longmynd.tunerBand()
         self.bands[defaultBand] = "None"
         self.presets = {}
+        self.osd = rydeplayer.osd.display.Config(theme)
         self.shutdownBehavior = rydeplayer.common.shutdownBehavior.APPSTOP
         self.debug = type('debugConfig', (object,), {
             'enableMenu': False,
@@ -297,6 +406,9 @@ class rydeConfig(object):
             # pass the gpio config to be parsed by the gpio config container
             if 'gpio' in config:
                 perfectConfig = perfectConfig and self.gpio.loadConfig(config['gpio'])
+            # pass the osd config to be parsed by the osd config container
+            if 'osd' in config:
+                perfectConfig = perfectConfig and self.osd.loadConfig(config['osd'])
             # parse shutdown default shutdown event behavior
             if 'shutdownBehavior' in config:
                 if isinstance(config['shutdownBehavior'], str):
@@ -358,26 +470,33 @@ class rydeConfig(object):
 class player(object):
 
     def __init__(self, configFile = None):
-        # load config
-        self.config = rydeConfig()
-        if configFile != None:
-            self.config.loadFile(configFile)
-        print(self.config.tuner)
-
         # setup ui core
         pygame.init()
         self.theme = Theme(pydispmanx.getDisplaySize())
         self.playbackState = rydeplayer.states.playback.StateDisplay(self.theme)
         print(pygame.font.get_fonts())
 
+        # load config
+        self.config = rydeConfig(self.theme)
+        if configFile != None:
+            self.config.loadFile(configFile)
+        print(self.config.tuner)
+
+        # mute
+        self.mute = False
+        self.muteCallbacks = []
+
         # setup longmynd
         self.lmMan = longmynd.lmManager(self.config.tuner, self.config.longmynd.binpath, self.config.longmynd.mediapath, self.config.longmynd.statuspath, self.config.longmynd.tstimeout)
-        self.config.tuner.setCallbackFunction(self.lmMan.reconfig)
+        self.config.tuner.addCallbackFunction(self.lmMan.reconfig)
 
         self.vlcStartup()
 
+        # setup on screen display
+        self.osd = rydeplayer.osd.display.Controller(self.theme, self.config.osd, self.lmMan.getStatus(), self, self.config.tuner)
+
         # start ui
-        self.app = guiState(self.theme, self.config.shutdownBehavior)
+        self.app = guiState(self.theme, self.config.shutdownBehavior, self, self.osd)
         self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
 
         # setup ir
@@ -396,7 +515,7 @@ class player(object):
         # main event loop
         while not quit:
             # need to regen every loop, lm stdout handler changes on lm restart
-            fds = self.irMan.getFDs() + self.lmMan.getFDs() + self.gpioMan.getFDs()
+            fds = self.irMan.getFDs() + self.lmMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs()
             r, w, x = select.select(fds, [], [])
             for fd in r:
                 quit = self.handleEvent(fd)
@@ -405,7 +524,30 @@ class player(object):
                     break
         self.shutdown(self.app.shutdownState)
 
+    def addMuteCallback(self, callback):
+        self.muteCallbacks.append(callback)
+
+    def removeMuteCallback(self, callback):
+        self.muteCallbacks.remove(callback)
+
+    def setMute(self,newMute):
+        if self.mute != newMute:
+            self.mute = newMute
+            self.vlcPlayer.audio_set_mute(newMute)
+            for callback in self.muteCallbacks:
+                callback(newMute)
+
+    def toggleMute(self):
+        self.setMute(not self.mute)
+
+    def getPresetName(self, preset):
+        if preset in self.config.presets:
+            return str(self.config.presets[preset])
+        else:
+            return ""
+
     def shutdown(self, behaviour):
+        del(self.osd)
         del(self.playbackState)
         if behaviour is rydeplayer.common.shutdownBehavior.APPREST:
             os.execv(sys.executable, ['python3', '-m', 'rydeplayer'] + sys.argv[1:])
@@ -423,6 +565,8 @@ class player(object):
             self.lmMan.handleFD(fd)
         elif(fd in self.gpioMan.getFDs()):
             quit = self.gpioMan.handleFD(fd)
+        elif(fd in self.osd.getFDs()):
+            quit = self.osd.handleFD(fd)
         return quit
 
     def updateState(self):
@@ -438,6 +582,7 @@ class player(object):
                     print("Param Restart")
                 if self.vlcPlayer.get_state() not in [vlc.State.Playing, vlc.State.Opening] and self.config.debug.autoplay:
                     self.vlcPlay()
+                    self.osd.activate(4, rydeplayer.osd.display.TimerLength.PROGRAMTRIGGER)
                 self.gpioMan.setRXgood(True)
             else:
                 self.playbackState.setState(rydeplayer.states.playback.States.NOLOCK)
@@ -450,6 +595,7 @@ class player(object):
                 self.vlcStop()
 #               print("parsed:"+str(vlcMedia.is_parsed()))
             self.gpioMan.setRXgood(False)
+        self.vlcPlayer.audio_set_mute(self.mute)
         print(self.vlcPlayer.get_state())
 
     # Step the state machine with a navEvent

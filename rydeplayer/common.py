@@ -26,6 +26,9 @@ class navEvent(enum.Enum):
     MENU   = (enum.auto(), None)
     POWER  = (enum.auto(), None)
     MUTE   = (enum.auto(), None)
+    OSDOFF = (enum.auto(), None)
+    OSDON  = (enum.auto(), None)
+    OSDTOG = (enum.auto(), None)
     ZERO   = (enum.auto(), 0)
     ONE    = (enum.auto(), 1)
     TWO    = (enum.auto(), 2)
@@ -52,6 +55,18 @@ class shutdownBehavior(enum.Enum):
     APPREST = enum.auto()
     SYSSTOP = enum.auto()
     SYSREST = enum.auto()
+
+# Enum defining box corners to be used as datums
+class datumCornerEnum(enum.Enum):
+    TR = enum.auto()
+    TC = enum.auto()
+    TL = enum.auto()
+    CR = enum.auto()
+    CC = enum.auto()
+    CL = enum.auto()
+    BR = enum.auto()
+    BC = enum.auto()
+    BL = enum.auto()
 
 class validTracker(object):
     def __init__(self, initValid):
