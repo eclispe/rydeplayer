@@ -29,6 +29,7 @@ class PolarityEnum(enum.Enum):
 class LOOffsetSideEnum(enum.Enum):
     HIGH = enum.auto()
     LOW = enum.auto()
+    SUM = enum.auto()
 
 class DVBVersionEnum(enum.Enum):
     DVBS = enum.auto()
@@ -207,22 +208,20 @@ class tunerBand(object):
     # return tuner frequency from requested frequency
     def mapReqToTune(self, freq):
         if self.loside == LOOffsetSideEnum.LOW:
-            if freq > self.freq:
-                return freq - self.freq
-            else:
-                return self.freq - freq
-        else:
-            return freq + self.freq
+            return freq-self.freq
+        elif self.loside == LOOffsetSideEnum.HIGH:
+            return self.freq-freq
+        elif self.loside == LOOffsetSideEnum.SUM:
+            return freq+self.freq
 
     # return request frequency from tuner frequeny
     def mapTuneToReq(self, freq):
-        if self.loside == LOOffsetSideEnum.HIGH:
-            if freq > self.freq:
-                return freq - self.freq
-            else:
-                return self.freq - freq
-        else:
-            return freq + self.freq
+        if self.loside == LOOffsetSideEnum.LOW:
+            return self.freq+freq
+        elif self.loside == LOOffsetSideEnum.HIGH:
+            return self.freq-freq
+        elif self.loside == LOOffsetSideEnum.SUM:
+            return freq-self.freq
     
     def getOffsetStr(self):
         output = ""
@@ -247,21 +246,36 @@ class tunerBand(object):
 class tunerConfigInt(rydeplayer.common.validTracker):
     def __init__(self, value, minval, maxval):
         self.value = value
-        self.minval = minval
-        self.maxval = maxval
+        if minval >= 0:
+            self.minval = minval
+        else:
+            self.minval = 0
+        if maxval >= 0:
+            self.maxval = maxval
+            self.validRange = True
+        else:
+            self.validRange = False
         # Initalise valid tracker with current valid status
-        super().__init__(value >= minval and value <= maxval)
+        super().__init__(value >= minval and value <= maxval and self.validRange)
 
     def setValue(self, newval):
         if self.value != newval:
             self.value = newval
-            self.updateValid(self.value >= self.minval and self.value <= self.maxval)
+            self.updateValid(self.value >= self.minval and self.value <= self.maxval and self.validRange)
 
     def setLimits(self, newMin, newMax):
         if self.minval != newMin or self.maxval != newMax:
-            self.minval = newMin
-            self.maxval = newMax
-            self.updateValid(self.value >= self.minval and self.value <= self.maxval)
+            if newMin >= 0:
+                self.minval = newMin
+            else:
+                self.minval = 0
+            if newMax >= 0:
+                self.maxval = newMax
+                self.validRange = True
+            else:
+                self.maxval = 0
+                self.validRange = False
+            self.updateValid(self.value >= self.minval and self.value <= self.maxval and self.validRange)
 
     def getValue(self):
         return self.value
@@ -383,7 +397,8 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.tunerMinFreq = 144000
         self.tunerMaxFreq = 2450000
         defaultfreq = 741500
-        self.freq = tunerConfigIntList(defaultfreq, self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq), True)
+        freqrange = (self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        self.freq = tunerConfigIntList(defaultfreq, min(freqrange), max(freqrange), True)
         self.freq.addValidCallback(self.updateValid)
         self.sr = tunerConfigIntList(1500, 33, 27500, True)
         self.sr.addValidCallback(self.updateValid)
@@ -398,7 +413,8 @@ class tunerConfig(rydeplayer.common.validTracker):
         sr.addValidCallback(self.updateValid)
         self.sr = sr
         self.band = band
-        self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        freqrange = (self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        self.freq.setLimits(min(freqrange), max(freqrange))
         self.updateValid()
         self.runCallbacks()
 
@@ -505,7 +521,8 @@ class tunerConfig(rydeplayer.common.validTracker):
                 print("Band config missing, skipping")
                 perfectConfig = False
 
-        self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        freqrange = (self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        self.freq.setLimits(min(freqrange), max(freqrange))
         if configUpdated: # run the callback if we chaged something
             self.runCallbacks()
         return perfectConfig
@@ -537,7 +554,8 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.runCallbacks()
     def setBand(self, newBand):
         self.band = newBand
-        self.freq.setLimits(self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        freqrange = (self.band.mapTuneToReq(self.tunerMinFreq), self.band.mapTuneToReq(self.tunerMaxFreq))
+        self.freq.setLimits(min(freqrange), max(freqrange))
         self.runCallbacks()
     def getBand(self):
         return self.band

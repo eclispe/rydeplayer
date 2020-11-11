@@ -26,7 +26,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
 * ```bands```
   * Name of the band, you may have to put it in double quotes ```"``` if you want to use names with various caracters such as ```:``` in it. It is recommended that you add an anchor if you need to reference the band later, e.g. ```"LNB Low": &bandlnblow```
     * ```lofreq``` LO frequency value in kHz
-    * ```loside``` Select either ```HIGH``` or ```LOW``` depending on if the IF is above or below the LO frequency respectively
+    * ```loside``` Select either ```HIGH``` or ```LOW``` when using the difference mixing product where the LO is above or below the RF frequency respectively or ```SUM``` if using the sum mixing product.
     * ```pol``` Band polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```
     * ```port``` Band input port. Choose from ```TOP``` or ```BOTTOM```
     * ```gpioid``` Band GPIO ID, valid values are 0-7.

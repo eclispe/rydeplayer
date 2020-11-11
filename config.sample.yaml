@@ -9,7 +9,7 @@ longmynd:
 bands:
     None:
         lofreq: 0
-        loside: HIGH
+        loside: SUM
         pol:  NONE
         port: BOTTOM
         gpioid: 1
