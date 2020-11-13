@@ -320,3 +320,56 @@ class program(generic):
                     break
 
         super().redraw(rects, deferRedraw)
+
+# module that displays the a numeric value with units
+class numericDisplay(generic):
+    def __init__ (self, theme, drawCallback, rect, units):
+        super().__init__(theme, drawCallback, rect)
+        self.rect = rect.copy()
+        self.units = units
+        self.renderedbox = None
+        self.value = None
+        self.dynamicTextRect = None
+
+    def updateVal(self, newval):
+        self.value = newval.getFreq()
+        self.redraw()
+
+    def redraw(self, rects = None, deferRedraw = False):
+        # if the layout needs recalcuating because its new, moved or changed size
+        if(self.renderedbox is None or self.renderedbox != self.rect):
+            self.surface.fill(self.theme.colours.transparent)
+            dynamicfontsize = self.theme.fontSysSizeOptimizeHeight(self.rect.height, 'freesans')
+            self.dynamicfont = pygame.font.SysFont('freesans', dynamicfontsize) # font for value to be displayed
+            self.renderedbox = self.rect.copy()
+        # render a blank if it is not set
+        if(self.value is None):
+            valuestr = ""
+        else:
+            valuestr = str(self.value)+self.units
+        if(self.dynamicTextRect is not None):
+            self.surface.fill(self.theme.colours.transparent, self.dynamicTextRect)
+        dynamicTextSurface = self.theme.outlineFontRender(valuestr, self.dynamicfont, self.theme.colours.white, self.theme.colours.black, 1)
+        self.dynamicTextRect = dynamicTextSurface.get_rect()
+        self.dynamicTextRect.centery = self.rect.height/2
+        self.dynamicTextRect.right = self.rect.width
+        self.surface.blit(dynamicTextSurface, self.dynamicTextRect)
+        super().redraw(rects, deferRedraw)
+
+# module that displays the current frequency
+class freq(numericDisplay):
+    def __init__ (self, theme, drawCallback, rect):
+        super().__init__(theme, drawCallback, rect, "kHz")
+
+    def updateVal(self, newval):
+        self.value = newval.getFreq()
+        self.redraw()
+
+# module that displays the current symbol rate
+class sr(numericDisplay):
+    def __init__ (self, theme, drawCallback, rect):
+        super().__init__(theme, drawCallback, rect, "kS")
+
+    def updateVal(self, newval):
+        self.value = newval.getSR()
+        self.redraw()

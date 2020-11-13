@@ -607,6 +607,8 @@ class tunerStatus(object):
         self.dvbVersion = None
         self.modulation = None
         self.pids = {}
+        self.freq = None
+        self.sr = None
 
     def addOnChangeCallback(self, callback):
         self.onChangeCallbacks.append(callback)
@@ -757,6 +759,28 @@ class tunerStatus(object):
         else:
            return False
 
+    def setFreq(self, newval):
+        if(isinstance(newval, int)):
+            if self.freq != newval:
+                self.freq = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setSR(self, newval):
+        if(isinstance(newval, float)):
+            if self.sr != newval:
+                self.sr = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def getMer(self):
         return self.mer
 
@@ -771,6 +795,12 @@ class tunerStatus(object):
 
     def getService(self):
         return self.service
+
+    def getFreq(self):
+        return self.freq
+
+    def getSR(self):
+        return self.sr
 
 class lmManager(object):
     def __init__(self, config, lmpath, mediaFIFOpath, statusFIFOpath, tsTimeout):
@@ -892,6 +922,11 @@ class lmManager(object):
                     if self.lastState != self.changeRefState : # if the signal parameters have changed
                         self.stateMonotonic += 1
                         self.changeRefState = copy.deepcopy(self.lastState)
+                elif msgtype == 6:
+                    currentBand = self.activeConfig.getBand()
+                    self.tunerStatus.setFreq(currentBand.mapTuneToReq(int(rawval)))
+                elif msgtype == 9:
+                    self.tunerStatus.setSR(float(rawval)/1000)
                 elif msgtype == 12:
                     self.tunerStatus.setMer(float(rawval)/10)
                 elif msgtype == 13:
