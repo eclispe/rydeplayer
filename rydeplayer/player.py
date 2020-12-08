@@ -487,7 +487,7 @@ class player(object):
         self.muteCallbacks = []
 
         # setup longmynd
-        self.lmMan = longmynd.lmManager(self.config.tuner, self.config.longmynd.binpath, self.config.longmynd.mediapath, self.config.longmynd.statuspath, self.config.longmynd.tstimeout)
+        self.lmMan = longmynd.lmManagerThread(self.config.tuner, self.config.longmynd.binpath, self.config.longmynd.mediapath, self.config.longmynd.statuspath, self.config.longmynd.tstimeout)
         self.config.tuner.addCallbackFunction(self.lmMan.reconfig)
 
         self.vlcStartup()
@@ -549,6 +549,7 @@ class player(object):
     def shutdown(self, behaviour):
         del(self.osd)
         del(self.playbackState)
+        self.lmMan.shutdown()
         if behaviour is rydeplayer.common.shutdownBehavior.APPREST:
             os.execv(sys.executable, ['python3', '-m', 'rydeplayer'] + sys.argv[1:])
         elif behaviour is rydeplayer.common.shutdownBehavior.SYSSTOP:
@@ -571,10 +572,11 @@ class player(object):
 
     def updateState(self):
         # update playback state
-        if(self.lmMan.isRunning()):
-            if(self.lmMan.isLocked()):
+        state = self.lmMan.getCoreState()
+        if(state.isRunning):
+            if(state.isLocked):
                 self.playbackState.setState(rydeplayer.states.playback.States.LOCKED)
-                newMonoState = self.lmMan.getMonotonicState()
+                newMonoState = state.monotonicState
 
                 if self.monotonicState != newMonoState:
                     self.monotonicState = newMonoState
