@@ -17,31 +17,34 @@
 import enum
 
 class navEvent(enum.Enum):
-    UP     = (enum.auto(), None)
-    DOWN   = (enum.auto(), None)
-    LEFT   = (enum.auto(), None)
-    RIGHT  = (enum.auto(), None)
-    SELECT = (enum.auto(), None)
-    BACK   = (enum.auto(), None)
-    MENU   = (enum.auto(), None)
-    POWER  = (enum.auto(), None)
-    MUTE   = (enum.auto(), None)
-    OSDOFF = (enum.auto(), None)
-    OSDON  = (enum.auto(), None)
-    OSDTOG = (enum.auto(), None)
-    ZERO   = (enum.auto(), 0)
-    ONE    = (enum.auto(), 1)
-    TWO    = (enum.auto(), 2)
-    THREE  = (enum.auto(), 3)
-    FOUR   = (enum.auto(), 4)
-    FIVE   = (enum.auto(), 5)
-    SIX    = (enum.auto(), 6)
-    SEVEN  = (enum.auto(), 7)
-    EIGHT  = (enum.auto(), 8)
-    NINE   = (enum.auto(), 9)
+    UP     = (enum.auto(), 'UP',     None)
+    DOWN   = (enum.auto(), 'DOWN',   None)
+    LEFT   = (enum.auto(), 'LEFT',   None)
+    RIGHT  = (enum.auto(), 'RIGHT',  None)
+    SELECT = (enum.auto(), 'SELECT', None)
+    BACK   = (enum.auto(), 'BACK',   None)
+    MENU   = (enum.auto(), 'MENU',   None)
+    POWER  = (enum.auto(), 'POWER',  None)
+    MUTE   = (enum.auto(), 'MUTE',   None)
+    CHANU  = (enum.auto(), 'CHAN+',  None)
+    CHAND  = (enum.auto(), 'CHAN-',  None)
+    OSDOFF = (enum.auto(), 'OSDOFF', None)
+    OSDON  = (enum.auto(), 'OSDON',  None)
+    OSDTOG = (enum.auto(), 'OSDTOG', None)
+    ZERO   = (enum.auto(), 'ZERO',   0)
+    ONE    = (enum.auto(), 'ONE',    1)
+    TWO    = (enum.auto(), 'TWO',    2)
+    THREE  = (enum.auto(), 'THREE',  3)
+    FOUR   = (enum.auto(), 'FOUR',   4)
+    FIVE   = (enum.auto(), 'FIVE',   5)
+    SIX    = (enum.auto(), 'SIX',    6)
+    SEVEN  = (enum.auto(), 'SEVEN',  7)
+    EIGHT  = (enum.auto(), 'EIGHT',  8)
+    NINE   = (enum.auto(), 'NINE',   9)
 
-    def __init__(self, enum, numericVal):
+    def __init__(self, enum, name, numericVal):
         self.numericVal = numericVal
+        self.rawname = name
     def __str__(self):
         return str(self.name)
     def isNumeric(self):
@@ -49,6 +52,9 @@ class navEvent(enum.Enum):
     @property
     def numericValue(self):
         return self.numericVal
+    @property
+    def rawName(self):
+        return self.rawname
 
 class shutdownBehavior(enum.Enum):
     APPSTOP = enum.auto()

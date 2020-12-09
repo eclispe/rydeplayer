@@ -786,11 +786,13 @@ class Menu(SuperStatesSurface):
         eps = eps.resize((newwidth,newheight), Image.ANTIALIAS)
         epsstr = eps.tobytes("raw", "RGBA")
         self.logosurface = pygame.image.fromstring(epsstr, eps.size, "RGBA")
+        self.surface = None
+        self.dispmanxlayer = None
 
     def cleanup(self):
         super().cleanup()
-        del(self.surface)
-        del(self.dispmanxlayer)
+        self.surface = None
+        self.dispmanxlayer = None
 
     def startup(self):
         # open and connect the display
@@ -839,12 +841,13 @@ class Menu(SuperStatesSurface):
                 self.done = True
 
     def redrawState(self, state, rects):
-        for rect in rects:
-            if(isinstance(state, MenuItem)):
-                self.surface.fill(self.theme.colours.backgroundSubMenu, rect)
-            elif(isinstance(state, ListSelect) or isinstance(state, NumberSelect) or isinstance(state, SubMenuGeneric)):
-                self.surface.fill(self.theme.colours.transparent, rect)
-        self.surface.blits(state.getBlitPairs())
+        if self.surface is not None:
+            for rect in rects:
+                if(isinstance(state, MenuItem)):
+                    self.surface.fill(self.theme.colours.backgroundSubMenu, rect)
+                elif(isinstance(state, ListSelect) or isinstance(state, NumberSelect) or isinstance(state, SubMenuGeneric)):
+                    self.surface.fill(self.theme.colours.transparent, rect)
+            self.surface.blits(state.getBlitPairs())
 
     def update(self):
         super().update()

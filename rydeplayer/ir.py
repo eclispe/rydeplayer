@@ -41,11 +41,11 @@ class irHandset(object):
         if isinstance(self.buttons, dict):
             codesremaining = list(self.buttons.keys())
             for thisNavEvent in rydeplayer.common.navEvent:
-                if thisNavEvent.name in self.buttons:
-                    ircode = self.buttons[thisNavEvent.name]
+                if thisNavEvent.rawName in self.buttons:
+                    ircode = self.buttons[thisNavEvent.rawName]
                     if(isinstance(ircode, int)):
                         codemap[ircode]=thisNavEvent
-                        codesremaining.remove(thisNavEvent.name)
+                        codesremaining.remove(thisNavEvent.rawName)
                     else:
                         print("Bad IR code: "+str(ircode))
             if len(codesremaining) > 0:

@@ -39,14 +39,14 @@ class gpioConfig(object):
         if isinstance(pins , dict):
             pinsremaining = list(pins.keys())
             for thisNavEvent in rydeplayer.common.navEvent:
-                if thisNavEvent.name in pins:
-                    pinNo = pins[thisNavEvent.name]
+                if thisNavEvent.rawName in pins:
+                    pinNo = pins[thisNavEvent.rawName]
                     if isinstance(pinNo, int):
                         if pinNo not in invalidPins: # make sure we aren't trying to use reserved pins
                             if pinNo <= self.maxPin: #check that the pin could exist
                                 if pinNo not in destmap:
                                     destmap[pinNo] = thisNavEvent
-                                    pinsremaining.remove(thisNavEvent.name)
+                                    pinsremaining.remove(thisNavEvent.rawName)
                                 else:
                                     print("Multiple events mapped to the same pin, skipping duplicates")
                             else:

@@ -248,6 +248,10 @@ class guiState(rydeplayer.states.gui.SuperStates):
                 self.osd.toggle(2)
             elif(event == rydeplayer.common.navEvent.MUTE):
                 self.player.toggleMute()
+            elif(event == rydeplayer.common.navEvent.CHANU):
+                self.player.switchPresetRelative(-1)
+            elif(event == rydeplayer.common.navEvent.CHAND):
+                self.player.switchPresetRelative(1)
 
 
 # GUI state for when the menu isnt showing
@@ -545,6 +549,21 @@ class player(object):
             return str(self.config.presets[preset])
         else:
             return ""
+
+    def switchPresetRelative(self, offset):
+        presetkeys = list(self.config.presets.keys())
+        if len(presetkeys) > 0:
+            newindex = None
+            if self.config.tuner in presetkeys:
+                newindex = (presetkeys.index(self.config.tuner) + offset)%len(presetkeys)
+            else:
+                if offset > 0:
+                    newindex = 0
+                elif offset < 0:
+                    newindex = len(presetkeys)-1
+            if newindex is not None:
+                self.config.tuner.setConfigToMatch(presetkeys[newindex])
+                self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
 
     def shutdown(self, behaviour):
         del(self.osd)
