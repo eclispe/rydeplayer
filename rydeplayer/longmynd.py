@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import enum, os, stat, subprocess, pty, select, copy, fcntl, collections, time
+import enum, os, stat, subprocess, pty, select, copy, fcntl, collections, time, socket, queue, threading
 import rydeplayer.common
 
 class inPortEnum(enum.Enum):
@@ -563,6 +563,8 @@ class tunerConfig(rydeplayer.common.validTracker):
         self.updateCallbacks.append(newCallback)
     def removeCallbackFunction(self, oldCallback):
         self.updateCallbacks.remove(oldCallback)
+    def getCallbackFunctions(self):
+        return self.updateCallbacks
 
     def updateValid(self):
         return super().updateValid(self.calcValid())
@@ -784,6 +786,9 @@ class tunerStatus(object):
     def getMer(self):
         return self.mer
 
+    def getDVBVersion(self):
+        return self.dvbVersion
+
     def getModulation(self):
         return self.modulation
 
@@ -801,6 +806,163 @@ class tunerStatus(object):
 
     def getSR(self):
         return self.sr
+
+    def copyStatus(self):
+        newstatus = tunerStatus()
+        newstatus.setStatusToMatch(self)
+        return newstatus
+
+    def setStatusToMatch(self, fromStatus):
+        changed = False
+        newMer = fromStatus.getMer()
+        if self.mer != newMer:
+            self.mer = newMer
+            changed = True
+        newMod = fromStatus.getModulation()
+        if self.modulation != newMod:
+            self.modulation = newMod
+            changed = True
+        newDVBversion = fromStatus.getDVBVersion()
+        if self.dvbVersion != newDVBversion:
+            self.dvbVersion = newDVBversion
+            changed = True
+        newPIDs = {}
+        for pid, codec in fromStatus.getPIDs().items():
+            newPIDs[pid] = codec
+        if self.pids != newPIDs:
+            self.pids = newPIDs
+            changed = True
+        newProvider = fromStatus.getProvider()
+        if self.provider != newProvider:
+            self.provider = newProvider
+            changed = True
+        newService = fromStatus.getService()
+        if self.service != newService:
+            self.service = newService
+            changed = True
+        newFreq = fromStatus.getFreq()
+        if self.freq != newFreq:
+            self.freq = newFreq
+            changed = True
+        newSR = fromStatus.getSR()
+        if self.sr != newSR:
+            self.sr = newSR
+            changed = True
+        if changed:
+            self.onChangeFire()
+
+# Events to send to longmynd thread
+class eventsToThread(enum.Enum):
+    RECONFIG = enum.auto()
+    START = enum.auto()
+    RESTART = enum.auto()
+    SHUTDOWN = enum.auto()
+# Event to receive from longmynd thread
+class eventsFromThread(enum.Enum):
+    NEWFULLSTATUS = enum.auto()
+    NEWCORESTATE = enum.auto()
+# threaded wrapper around longmynd
+class lmManagerThread(object):
+    def __init__(self, config, lmpath, mediaFIFOpath, statusFIFOpath, tsTimeout):
+        # socket and queue to communicate to longmynd thread
+        self.toRecvSock, self.toSendSock = socket.socketpair()
+        self.toEventQueue = queue.Queue()
+        # socket and queue to communicate from longmynd thread
+        self.fromRecvSock, self.fromSendSock = socket.socketpair()
+        self.fromEventQueue = queue.Queue()
+        self.tunerStatus = tunerStatus()
+        self.lmman = lmManager(config, lmpath, mediaFIFOpath, statusFIFOpath, tsTimeout)
+        self.lmman.getStatus().addOnChangeCallback(self.statusCallbackThread)
+        # trackers for the state in and out of the thread
+        self.coreStateThread = self.lmman.getCoreState()
+        self.coreStateMain = self.coreStateThread
+        # create and start thread
+        self.thread = threading.Thread(target=self.threadLoop, daemon=True)
+        self.thread.start()
+    def reconfig(self, config):
+        self.toEventQueue.put((eventsToThread.RECONFIG, config.copyConfig()))
+        self.toSendSock.send(b"\x00")
+    def remedia(self):
+        self.lmman.remedia()
+    def getMediaFd(self):
+        return self.lmman.getMediaFd()
+    def getMainFDs(self):
+        return [self.fromRecvSock]
+    def getThreadFDs(self):
+        return self.lmman.getFDs() + [self.toRecvSock]
+    def getFDs(self):
+        return self.getMainFDs()
+    def getStatus(self):
+        return self.tunerStatus
+    def statusCallbackThread(self, newStatus):
+        self.fromEventQueue.put((eventsFromThread.NEWFULLSTATUS, newStatus.copyStatus()))
+        self.fromSendSock.send(b"\x00")
+    def handleMainFD(self, fd):
+        # handle events coming from the longmynd thread
+        newStatus = None
+        while not self.fromEventQueue.empty():
+            fd.recv(1) # there should always be the same number of chars in the socket as items in the queue
+            queueCommand, queueArg = self.fromEventQueue.get()
+            if queueCommand == eventsFromThread.NEWFULLSTATUS:
+                newStatus = queueArg
+            elif queueCommand == eventsFromThread.NEWCORESTATE:
+                self.coreStateMain = queueArg
+        if newStatus is not None:
+            self.tunerStatus.setStatusToMatch(newStatus)
+    def handleThreadFD(self, fd):
+        # handle events inside the longmynd thread
+        quit = False
+        if fd == self.toRecvSock:
+            newconfig = None
+            while not self.toEventQueue.empty():
+                fd.recv(1) # there should always be the same number of chars in the socket as items in the queue
+                queueCommand, queueArg = self.toEventQueue.get()
+                if queueCommand == eventsToThread.RECONFIG:
+                    newconfig = queueArg
+                elif queueCommand == eventsToThread.START:
+                    self.lmman.start()
+                elif queueCommand == eventsToThread.RESTART:
+                    self.lmman.restart()
+                elif queueCommand == eventsToThread.SHUTDOWN:
+                    self.lmman.stop()
+                    quit = True
+            if newconfig is not None and not quit:
+                self.lmman.reconfig(newconfig)
+
+        elif fd in self.lmman.getFDs():
+            self.lmman.handleFD(fd)
+        return quit
+
+    def handleFD(self, fd):
+        if fd in self.getMainFDs():
+            self.handleMainFD(fd)
+    def getCoreState(self):
+        return self.coreStateMain
+    def start(self):
+        self.toEventQueue.put((eventsToThread.START, None))
+        self.toSendSock.send(b"\x00")
+    def restart(self):
+        self.toEventQueue.put((eventsToThread.RESTART, None))
+        self.toSendSock.send(b"\x00")
+    def shutdown(self):
+        self.toEventQueue.put((eventsToThread.SHUTDOWN, None))
+        self.toSendSock.send(b"\x00")
+        self.thread.join()
+    def threadLoop(self):
+        # thread main loop
+        quit = False
+        while not quit:
+            fds = self.getThreadFDs()
+            r, w, x = select.select(fds, [], [])
+            for fd in r:
+                quit = self.handleThreadFD(fd)
+                if quit:
+                    break
+            newCoreState = self.lmman.getCoreState()
+            if newCoreState != self.coreStateThread:
+                self.coreStateThread = newCoreState
+                self.fromEventQueue.put((eventsFromThread.NEWCORESTATE, newCoreState))
+                self.fromSendSock.send(b"\x00")
 
 class lmManager(object):
     def __init__(self, config, lmpath, mediaFIFOpath, statusFIFOpath, tsTimeout):
@@ -847,6 +1009,8 @@ class lmManager(object):
         self.changeRefState = copy.deepcopy(self.lastState)
         self.stateMonotonic = 0
         self.tunerStatus = tunerStatus()
+        # state type for the core longmynd state
+        self.coreStateType = collections.namedtuple('coreState', ['isRunning', 'isLocked', 'monotonicState'])
 
     def reconfig(self, config):
         """reconfigures longmynd"""
@@ -870,6 +1034,10 @@ class lmManager(object):
         fdCallbacks[self.statusFIFOfd] = self.processStatus
         if(fd in fdCallbacks):
             fdCallbacks[fd]()
+    def getCoreState(self):
+        """gets the core system state in a single call"""
+        state = self.coreStateType(self.isRunning(), self.isLocked(), self.getMonotonicState())
+        return state
     def isRunning(self):
         if(self.process != None and self.lmstarted and self.statusrecv):
             polled = self.process.poll()
@@ -878,7 +1046,7 @@ class lmManager(object):
             return False
     def isLocked(self):
         """returns if longmynd is locked on to a signal
-        This does not mean it can be decoded, MER may still be too high
+        This does not mean it can be decoded, MER may still be too low
         """
         if(self.isRunning()):
             print("state:"+str(self.lastState))
@@ -1150,6 +1318,7 @@ class lmManager(object):
             print("Can't start, config invalid")
     def restart(self):
         if self.process is not None:
+            if not self.statusrecv:
+                time.sleep(0.2)
             self.stop()
         self.start()
-        time.sleep(0.1)
