@@ -256,7 +256,7 @@ class Controller(object):
                 if modulerect.collidelist(boxes) >= 0:
                     modulesurface = module.getSurface()
                     for box in boxes:
-                        blitPairs.append((modulesurface, modulerect.clip(box)))
+                        blitPairs.append((modulesurface, modulerect))# , modulerect.clip(box))) do it the slow way, pending pygame fix
         self.surface.blits(blitPairs)
         # Allow defering final update if multiple modules as being updated
         if not deferRedraw:
