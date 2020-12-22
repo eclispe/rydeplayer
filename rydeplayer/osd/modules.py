@@ -371,7 +371,9 @@ class sr(numericDisplay):
         super().__init__(theme, drawCallback, rect, " kS")
 
     def updateVal(self, newval):
-        newsr = round(newval.getSR())
-        if newsr != self.value:
-            self.value = newsr
-            self.redraw()
+        newsr = newval.getSR()
+        if newsr is not None:
+            newsrround = round(newsr)
+            if newsrround != self.value:
+                self.value = newsrround
+                self.redraw()
