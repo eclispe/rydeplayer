@@ -14,4 +14,4 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["common", "states", "ir", "gpio", "longmynd", "player", "osd"]
+__all__ = ["common", "states", "ir", "gpio", "network", "longmynd", "player", "osd"]

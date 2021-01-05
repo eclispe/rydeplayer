@@ -87,6 +87,10 @@ osd:
     inactive:
         MUTE: null
 
+network:
+    bindaddr: 'localhost'
+    port: 8765
+
 shutdownBehavior: APPSTOP
 
 debug:

@@ -97,6 +97,8 @@ class tunerBand(object):
         self.pol = PolarityEnum.NONE
         self.port = inPortEnum.TOP
         self.gpioid = 0
+        self.dumpCache = {}
+        self.dumpCache = self.dumpBand()
 
     def setBand(self, freq, loside, pol, port, gpioid):
         self.freq = freq
@@ -104,6 +106,14 @@ class tunerBand(object):
         self.pol = pol
         self.port = port
         self.gpioid = gpioid
+
+    def dumpBand(self):
+        self.dumpCache['lofreq'] = self.freq
+        self.dumpCache['loside'] = self.loside.name.upper()
+        self.dumpCache['pol'] = self.pol.name.upper()
+        self.dumpCache['port'] = self.port.name.upper()
+        self.dumpCache['gpioid'] = self.gpioid
+        return self.dumpCache
 
     def loadBand(self, config):
         configUpdated = False

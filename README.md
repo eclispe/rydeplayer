@@ -67,6 +67,9 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
     * ```REPORT``` Displays the difference between the MER and the minimal viable MER for the current modulation and FEC, size/location configuration the same as for ```MUTE```.
     * ```PROGRAM``` Displays the service, provider, preset name, modulation type and transport stream PID details for the current signal, size/location configuration the same as for ```MUTE```.
   * ```inactive``` The same as the active list but for when the OSD is inactive.
+* ```network``` This section contains the network control configuration
+  * ```bindaddr``` The address of the local network interface use or '' to use all interfaces
+  * ```port```  The TCP port number to use
 * ```shutdownBehavior``` The default shutdown option when the power button is double pressed. Choose from ```APPSTOP``` or ```APPREST``` to stop the player or restart the player respectively.
 * ```debug``` Debug options, for advanced users, do not rely on these, they may go away without notice
   * ```enableMenu``` Enable the debug menu entry
@@ -93,6 +96,17 @@ Once you have the correct driver setup you should be able to see the IR codes wh
 54132.040074: event type EV_SYN(0x00).
 ```
 Now press each button you wish to map on the handset and add the scancode to the new handset file. To access the core functionality you need to add at least the core 5 codes, `UP` or `DOWN`, `LEFT` or `RIGHT`, `SELECT`, `BACK` and `MENU` for each remote. The full list of supported codes is available in the sample handset file, it is recommended that you map all codes that are supported by your handset.
+
+## Network Interface
+The interface uses TCP sockets with JSON payloads, all requests and responses consist of a JSON object. All requests must contain a minimum of a ```request``` attribute string. All responses will contain a minimum of a ```success``` attribute boolean, if there is an error an ```error``` attribute string will be present.
+
+The network interface is disabled by default and is only enabled if a bind address is specified in the config file. A very basic sample client is provided in ```networktest.py```.
+
+### ```getBands```
+The ```getBands``` request returns a ```bands``` attribute object containing the bands in the band library using the same format as the config file.
+
+### ```setTune```
+The ```setTune``` request accepts a ```tune``` attribute object containing a preset in the same format as the config file. The ```band``` attribute of the preset is in the same format as returned by the ```getBands``` request.
 
 ## Run
 With both pyDispmanx and rydeplayer in the current directory or your ```PYTHONPATH``` and optionally a config.yaml in the current directory run:

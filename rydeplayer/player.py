@@ -18,6 +18,7 @@ import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, impor
 from . import longmynd
 from . import ir
 import rydeplayer.gpio
+import rydeplayer.network
 import rydeplayer.common
 import rydeplayer.states.gui
 import rydeplayer.states.playback
@@ -290,6 +291,7 @@ class rydeConfig(object):
         self.bands[defaultBand] = "None"
         self.presets = {}
         self.osd = rydeplayer.osd.display.Config(theme)
+        self.network = rydeplayer.network.networkConfig()
         self.shutdownBehavior = rydeplayer.common.shutdownBehavior.APPSTOP
         self.debug = type('debugConfig', (object,), {
             'enableMenu': False,
@@ -377,7 +379,7 @@ class rydeConfig(object):
                     for presetName in config['presets']:
                         presetDict = config['presets'][presetName]
                         presetObject = longmynd.tunerConfig()
-                        if presetObject.loadConfig(presetDict):
+                        if presetObject.loadConfig(presetDict, list(self.bands.keys())):
                             # dedupe preset object with exsisting library
                             if presetObject in exsistingPresets:
                                 presetObject = exsistingPresets[exsistingPresets.index(presetObject)]
@@ -395,7 +397,8 @@ class rydeConfig(object):
             # pass default tuner config to be parsed by longmynd module
             if 'default' in config:
                 defaultPreset = longmynd.tunerConfig()
-                if defaultPreset.loadConfig(config['default']):
+#                perfectConfig = perfectConfig and defaultPreset.loadConfig(config['default'], list(self.bands.keys()))
+                if defaultPreset.loadConfig(config['default'], list(self.bands.keys())):
                     # dedupe preset object with exsisting library
                     exsistingPresets = list(self.presets.keys())
                     if defaultPreset in exsistingPresets:
@@ -413,6 +416,9 @@ class rydeConfig(object):
             # pass the osd config to be parsed by the osd config container
             if 'osd' in config:
                 perfectConfig = perfectConfig and self.osd.loadConfig(config['osd'])
+            # pass the network config to be parsed by the network config container
+            if 'network' in config:
+                perfectConfig = perfectConfig and self.network.loadConfig(config['network'])
             # parse shutdown default shutdown event behavior
             if 'shutdownBehavior' in config:
                 if isinstance(config['shutdownBehavior'], str):
@@ -503,6 +509,9 @@ class player(object):
         self.app = guiState(self.theme, self.config.shutdownBehavior, self, self.osd)
         self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
 
+        # start network
+        self.netMan = rydeplayer.network.networkManager(self.config)
+
         # setup ir
         self.irMan = ir.irManager(self.stepSM, self.config.ir)
 
@@ -519,7 +528,7 @@ class player(object):
         # main event loop
         while not quit:
             # need to regen every loop, lm stdout handler changes on lm restart
-            fds = self.irMan.getFDs() + self.lmMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs()
+            fds = self.irMan.getFDs() + self.lmMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs()
             r, w, x = select.select(fds, [], [])
             for fd in r:
                 quit = self.handleEvent(fd)
@@ -587,6 +596,8 @@ class player(object):
             quit = self.gpioMan.handleFD(fd)
         elif(fd in self.osd.getFDs()):
             quit = self.osd.handleFD(fd)
+        elif(fd in self.netMan.getFDs()):
+            quit = self.netMan.handleFD(fd)
         return quit
 
     def updateState(self):
