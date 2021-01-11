@@ -128,7 +128,7 @@ class networkManager(object):
             return result
         newconfig = rydeplayer.longmynd.tunerConfig()
         if not newconfig.loadConfig(command['tune'],list(self.config.bands.keys())):
-            result['sucess'] = False
+            result['success'] = False
             result['error'] = "Parse Failure, see Ryde log for details"
             return result
         self.config.tuner.setConfigToMatch(newconfig)
