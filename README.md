@@ -108,6 +108,12 @@ The ```getBands``` request returns a ```bands``` attribute object containing the
 ### ```setTune```
 The ```setTune``` request accepts a ```tune``` attribute object containing a preset in the same format as the config file. The ```band``` attribute of the preset is in the same format as returned by the ```getBands``` request.
 
+### ```setMute```
+The ```setMute``` request accepts a ```mute``` attribute boolean for the new mute state.
+
+### ```sendEvent```
+The ```sendEvent``` request accepts an ```event``` attribute string containing the button event to trigger.
+
 ## Run
 With both pyDispmanx and rydeplayer in the current directory or your ```PYTHONPATH``` and optionally a config.yaml in the current directory run:
 

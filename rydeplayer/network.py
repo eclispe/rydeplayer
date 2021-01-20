@@ -16,6 +16,7 @@
 
 import socket, json
 import rydeplayer.longmynd
+import rydeplayer.common
 
 class networkConfig(object):
     def __init__(self):
@@ -54,15 +55,25 @@ class networkConfig(object):
 
 
 class networkManager(object):
-    def __init__(self, config):
+    def __init__(self, config, eventCallback, muteCallback):
         self.config = config
+        self.eventCallback = eventCallback
+        self.muteCallback = muteCallback
         self.activeConnections = dict()
         if self.config.network.enabled:
             self.mainSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.mainSock.setblocking(0)
             self.mainSock.bind((self.config.network.bindaddr, self.config.network.port))
             self.mainSock.listen(5)
-            self.commands = {"getBands":self.getBands, "setTune":self.setTune}
+            self.commands = { # dict of commands and handler functions
+                    "getBands":self.getBands,
+                    "setTune":self.setTune,
+                    "setMute": self.setMute,
+                    "sendEvent":self.sendEvent,
+                    }
+            self.eventMap = dict()
+            for thisEvent in rydeplayer.common.navEvent:
+                self.eventMap[thisEvent.rawName] = thisEvent
 
     def getFDs(self):
         if self.config.network.enabled:
@@ -71,6 +82,7 @@ class networkManager(object):
             return []
 
     def handleFD(self, fd):
+        stop = False
         if fd is self.mainSock:
             connection, addr = fd.accept()
             connection.setblocking(0)
@@ -86,50 +98,80 @@ class networkManager(object):
                 try:
                     data = json.loads(self.activeConnections[fd])
                 except json.JSONDecodeError:
-                    return
-                result = self.processCommand(data)
+                    return stop
+                result, stop = self.processCommand(data)
                 fd.send(bytes(json.dumps(result),encoding="utf-8"))
             else:
                 del self.activeConnections[fd]
                 fd.close()
+        return stop
 
+    # decode basic command and call appropriate handler
     def processCommand(self, command):
         result = {'success': True}
+        stop = False
         print(command)
         print(type(command))
         if not isinstance(command,dict):
             result['success'] = False
             result['error'] = "JSON is not an object"
-            return result
+            return (result, stop)
         if 'request' not in command:
             result['success'] = False
             result['error'] = "Request type missing"
-            return result
+            return (result, stop)
         if command['request'] not in self.commands.keys():
             result['success'] = False
             result['error'] = "Invalid request type"
-            return result
+            return (result, stop)
         if self.commands[command['request']] is not None:
-            commandResult = self.commands[command['request']](command)
-            return {**result, **commandResult}
-        return result
+            commandResult, stop = self.commands[command['request']](command)
+            return ({**result, **commandResult}, stop)
+        return (result, stop)
 
     def getBands(self, command):
         result = {'success':True, 'bands': {}}
         for band, bandName in self.config.bands.items():
             result['bands'][bandName]=band.dumpBand()
-        return result
+        return (result, False)
 
     def setTune(self, command):
         result = {'success':True}
         if 'tune' not in command:
             result['success'] = False
             result['error'] = "No tune details"
-            return result
+            return (result, False)
         newconfig = rydeplayer.longmynd.tunerConfig()
         if not newconfig.loadConfig(command['tune'],list(self.config.bands.keys())):
             result['success'] = False
             result['error'] = "Parse Failure, see Ryde log for details"
-            return result
+            return (result, False)
         self.config.tuner.setConfigToMatch(newconfig)
-        return result
+        return (result, False)
+
+    def setMute(self, command):
+        result = {'success':True}
+        if 'mute' not in command:
+            result['success'] = False
+            result['error'] = "No mute state specified"
+            return (result, False)
+        if not isinstance(command['mute'], bool):
+            result['success'] = False
+            result['error'] = "Mute is not a bool"
+            return (result, False)
+        self.muteCallback(command['mute'])
+        return (result, False)
+
+    def sendEvent(self, command):
+        result = {'success':True}
+        if 'event' not in command:
+            result['success'] = False
+            result['error'] = "No event provided"
+            return (result, False)
+        if command['event'] not in self.eventMap:
+            result['success'] = False
+            result['error'] = "Invalid event provided"
+            return (result, False)
+        thisEvent = self.eventMap[command['event']]
+        stop = self.eventCallback(thisEvent)
+        return (result, stop)

@@ -510,7 +510,7 @@ class player(object):
         self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
 
         # start network
-        self.netMan = rydeplayer.network.networkManager(self.config)
+        self.netMan = rydeplayer.network.networkManager(self.config, self.stepSM, self.setMute)
 
         # setup ir
         self.irMan = ir.irManager(self.stepSM, self.config.ir)
