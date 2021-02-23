@@ -16,6 +16,9 @@
 
 import enum, os, stat, subprocess, pty, select, copy, fcntl, collections, time, socket, queue, threading
 import rydeplayer.common
+import pyftdi.ftdi
+import pyftdi.usbtools
+import pyftdi.eeprom
 
 class inPortEnum(enum.Enum):
     TOP = enum.auto()
@@ -89,6 +92,70 @@ class CodecEnum(enum.Enum):
         self.longName = longName
     def __str__(self):
         return self.longName
+
+class ftdiConfigs(enum.Enum):
+    UNKNOWN = (enum.auto(), frozenset(), False)
+    GENERAL = (enum.auto(), frozenset([
+        ('channel_a_type', 'UART'),
+        ('chip', 86),
+        ('group_0_drive', True),
+        ('group_0_schmitt', False),
+        ('group_0_slew', False),
+        ('group_1_drive', True),
+        ('group_1_schmitt', False),
+        ('group_1_slew', False),
+        ('group_2_drive', True),
+        ('group_2_schmitt', False),
+        ('group_2_slew', False),
+        ('group_3_drive', True),
+        ('group_3_schmitt', False),
+        ('group_3_slew', False),
+        ('has_serial', True),
+        ('in_isochronous', False),
+        ('out_isochronous', False),
+        ('product_id', 24592),
+        ('suspend_dbus7', pyftdi.eeprom.FtdiEeprom.CFG1(0)),
+        ('suspend_pull_down', False),
+        ('type', 1792),
+        ('vendor_id', 1027)
+    ]), False)
+    TUNER = (enum.auto(), GENERAL[1] | frozenset([
+        ('channel_a_driver', 'D2XX'),
+        ('channel_b_type', 'FIFO'),
+        ('remote_wakeup', False),
+        ('self_powered', True),
+        ('channel_b_driver', 'D2XX'),
+        ('usb_version', 13107),
+        ('power_max', 0)
+    ]), False)
+    FACTORY = (enum.auto(), GENERAL[1] | frozenset([
+        ('channel_a_driver', 'VCP'),
+        ('channel_b_driver', 'VCP'),
+        ('channel_b_type', 'UART'),
+        ('power_max', 150),
+        ('product', 'FT2232H MiniModule'),
+        ('remote_wakeup', True),
+        ('self_powered', False),
+        ('usb_version', 4369),
+    ]), True)
+    MINITIOUNER = (enum.auto(), TUNER[1] | frozenset([
+        ('product', 'USB <-> NIM tuner'),
+    ]), True)
+    KNUCKER = (enum.auto(), TUNER[1] | frozenset([
+        ('product', 'CombiTuner-Express'),
+    ]), True)
+
+    def __init__(self, enum, configset, canIdentify):
+        self._configset = configset
+        self._canIdentify = canIdentify
+
+    @property
+    def configSet(self):
+        return self._configset
+
+    @property
+    def canIdentify(self):
+        return self._canIdentify
 
 class tunerBand(object):
     def __init__(self):
@@ -1292,36 +1359,62 @@ class lmManager(object):
         if dumpOutput:
             for logline in self.lmlog:
                 print(logline)
+
+    def _fetchFtdiDevices(self):
+        pyftdi.usbtools.UsbTools.flush_cache()
+        foundDevices = pyftdi.ftdi.Ftdi.list_devices("ftdi://ftdi:2232h/1")
+        devices = {}
+        for deviceDesc in foundDevices:
+            device = pyftdi.usbtools.UsbTools.get_device(deviceDesc[0])
+            eeprom = pyftdi.eeprom.FtdiEeprom()
+            eeprom.open(device)
+            signature = []
+            for prop in sorted(list(eeprom.properties)+['product']):
+                signature.append((prop,getattr(eeprom, prop)))
+            devices[deviceDesc]=frozenset(signature)
+            eeprom.close()
+            pyftdi.usbtools.UsbTools.release_device(device)
+        return devices
+
     def start(self):
         if self.activeConfig.isValid():
             if self.process == None :
-                print("start")
-                self.lmstarted = False
-                self.statusrecv = False
-                self.statelog=[]
-                self.lmlog=[]
-                args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename, '-r', str(self.tsTimeout)]
-                if self.activeConfig.band.getInputPort() == inPortEnum.BOTTOM:
-                    args.append('-w')
-                if self.activeConfig.band.getPolarity() == PolarityEnum.HORIZONTAL:
-                    args.extend(['-p', 'h'])
-                elif self.activeConfig.band.getPolarity() == PolarityEnum.VERTICAL:
-                    args.extend(['-p', 'v'])
-                
-                # generate frequency scan string
-                freqStrings = []
-                for freqVal in self.activeConfig.freq:
-                    freqStrings.append(str(self.activeConfig.band.mapReqToTune(freqVal.getValue())))
+                devices = self._fetchFtdiDevices()
+                foundDevice = None
+                for device in devices:
+                    if devices[device] == ftdiConfigs.MINITIOUNER.configSet:
+                        foundDevice = device
+                        break
+                if foundDevice is not None:
+                    print("start")
+                    self.lmstarted = False
+                    self.statusrecv = False
+                    self.statelog=[]
+                    self.lmlog=[]
+                    args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename, '-r', str(self.tsTimeout), '-u', str(foundDevice[0].bus), str(foundDevice[0].address)]
+                    if self.activeConfig.band.getInputPort() == inPortEnum.BOTTOM:
+                        args.append('-w')
+                    if self.activeConfig.band.getPolarity() == PolarityEnum.HORIZONTAL:
+                        args.extend(['-p', 'h'])
+                    elif self.activeConfig.band.getPolarity() == PolarityEnum.VERTICAL:
+                        args.extend(['-p', 'v'])
 
-                # generate symbol rate scan string
-                srStrings = []
-                for srVal in self.activeConfig.sr:
-                    srStrings.append(str(srVal.getValue()))
+                    # generate frequency scan string
+                    freqStrings = []
+                    for freqVal in self.activeConfig.freq:
+                        freqStrings.append(str(self.activeConfig.band.mapReqToTune(freqVal.getValue())))
 
-                args.append(",".join(freqStrings))
-                args.append(",".join(srStrings))
-                print(args)
-                self.process = subprocess.Popen(args, stdout=self.stdoutWritefd, stderr=subprocess.STDOUT, bufsize=0)
+                    # generate symbol rate scan string
+                    srStrings = []
+                    for srVal in self.activeConfig.sr:
+                        srStrings.append(str(srVal.getValue()))
+
+                    args.append(",".join(freqStrings))
+                    args.append(",".join(srStrings))
+                    print(args)
+                    self.process = subprocess.Popen(args, stdout=self.stdoutWritefd, stderr=subprocess.STDOUT, bufsize=0)
+                else:
+                    print("No MiniTiouner USB module found")
             else:
                 print("LM already running")
         else:
