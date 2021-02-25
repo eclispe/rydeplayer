@@ -1373,6 +1373,7 @@ class lmManager(object):
                 signature.append((prop,getattr(eeprom, prop)))
             devices[deviceDesc]=frozenset(signature)
             eeprom.close()
+            device.reset()
             pyftdi.usbtools.UsbTools.release_device(device)
         return devices
 
