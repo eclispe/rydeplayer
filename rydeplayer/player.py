@@ -658,6 +658,8 @@ class player(object):
         vlcArgs = ''
         displaySize = pydispmanx.getDisplaySize()
         vlcArgs += '--width '+str(displaySize[0])+' --height '+str(displaySize[1])+' '
+        displayPAR = pydispmanx.getPixelAspectRatio()
+        vlcArgs += '--monitor-par '+str(displayPAR[0])+':'+str(displayPAR[1])+' '
         if self.config.debug.disableHardwareCodec:
             vlcArgs += '--codec ffmpeg '
 #        vlcArgs += '--gain 4 --alsa-audio-device hw:CARD=Headphones,DEV=0 '
