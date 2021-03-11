@@ -141,6 +141,18 @@ class ftdiConfigs(enum.Enum):
     MINITIOUNER = (enum.auto(), TUNER[1] | frozenset([
         ('product', 'USB <-> NIM tuner'),
     ]), True)
+    MINITIOUNEREXPRESS = (enum.auto(), TUNER[1] | frozenset([
+        ('product', 'MiniTiouner-Express'),
+    ]), True)
+    MINITIOUNER_S = (enum.auto(), TUNER[1] | frozenset([
+        ('product', 'MiniTiouner'),
+    ]), True)
+    MINITIOUNER_PRO_TS1 = (enum.auto(), TUNER[1] | frozenset([
+        ('product', 'MiniTiouner_Pro_TS1'),
+    ]), True)
+    MINITIOUNER_PRO_TS2 = (enum.auto(), TUNER[1] | frozenset([
+        ('product', 'MiniTiouner_Pro_TS2'),
+    ]), True)
     KNUCKER = (enum.auto(), TUNER[1] | frozenset([
         ('product', 'CombiTuner-Express'),
     ]), True)
@@ -1381,9 +1393,10 @@ class lmManager(object):
         if self.activeConfig.isValid():
             if self.process == None :
                 devices = self._fetchFtdiDevices()
+                validTuners = [ftdiConfigs.MINITIOUNER.configSet, ftdiConfigs.MINITIOUNEREXPRESS.configSet, ftdiConfigs.MINITIOUNER_S, ftdiConfigs.MINITIOUNER_PRO_TS1, ftdiConfigs.MINITIOUNER_PRO_TS2]
                 foundDevice = None
                 for device in devices:
-                    if devices[device] == ftdiConfigs.MINITIOUNER.configSet:
+                    if devices[device] in validTuners:
                         foundDevice = device
                         break
                 if foundDevice is not None:
