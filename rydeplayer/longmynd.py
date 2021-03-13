@@ -1393,7 +1393,7 @@ class lmManager(object):
         if self.activeConfig.isValid():
             if self.process == None :
                 devices = self._fetchFtdiDevices()
-                validTuners = [ftdiConfigs.MINITIOUNER.configSet, ftdiConfigs.MINITIOUNEREXPRESS.configSet, ftdiConfigs.MINITIOUNER_S, ftdiConfigs.MINITIOUNER_PRO_TS1, ftdiConfigs.MINITIOUNER_PRO_TS2]
+                validTuners = [ftdiConfigs.MINITIOUNER.configSet, ftdiConfigs.MINITIOUNEREXPRESS.configSet, ftdiConfigs.MINITIOUNER_S.configSet, ftdiConfigs.MINITIOUNER_PRO_TS1.configSet, ftdiConfigs.MINITIOUNER_PRO_TS2.configSet]
                 foundDevice = None
                 for device in devices:
                     if devices[device] in validTuners:
