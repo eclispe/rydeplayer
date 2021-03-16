@@ -62,6 +62,7 @@ class networkManager(object):
         self.activeConnections = dict()
         if self.config.network.enabled:
             self.mainSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.mainSock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             self.mainSock.setblocking(0)
             self.mainSock.bind((self.config.network.bindaddr, self.config.network.port))
             self.mainSock.listen(5)
@@ -74,6 +75,13 @@ class networkManager(object):
             self.eventMap = dict()
             for thisEvent in rydeplayer.common.navEvent:
                 self.eventMap[thisEvent.rawName] = thisEvent
+
+    def __del__(self):
+        for sock in list(self.activeConnections.keys()):
+            sock.shutdown(socket.SHUT_RDWR)
+            sock.close()
+        self.mainSock.shutdown(socket.SHUT_RDWR)
+        self.mainSock.close()
 
     def getFDs(self):
         if self.config.network.enabled:
@@ -93,6 +101,7 @@ class networkManager(object):
                 self.activeConnections[fd]+=dataStr
                 if len(self.activeConnections[fd]) > (100*1024): # 100kB command limit
                     del self.activeConnections[fd]
+                    fd.shutdown(socket.SHUT_RDWR)
                     fd.close()
                     print("Network command too long, chopping")
                 try:
@@ -103,6 +112,7 @@ class networkManager(object):
                 fd.send(bytes(json.dumps(result),encoding="utf-8"))
             else:
                 del self.activeConnections[fd]
+                fd.shutdown(socket.SHUT_RDWR)
                 fd.close()
         return stop
 
