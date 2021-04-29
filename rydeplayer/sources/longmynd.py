@@ -606,24 +606,25 @@ class lmManager(object):
                 self.process.wait(max(endloop-time.monotonic(),0))
 
     def stop(self, dumpOutput = False, waitfirst=False):
-        #waitfirst is for if its crashed and we want to wait for it to die on its own so we get all the output
-        if(waitfirst):
-            try:
-                self._communicate(timeout=4)
-            except subprocess.TimeoutExpired:
-                dumpOutput=True
-                self.process.kill()
-                print("Killed during fatal")
+        if self.process is not None:
+            #waitfirst is for if its crashed and we want to wait for it to die on its own so we get all the output
+            if(waitfirst):
+                try:
+                    self._communicate(timeout=4)
+                except subprocess.TimeoutExpired:
+                    dumpOutput=True
+                    self.process.kill()
+                    print("Killed during fatal")
+                    self._communicate()
+            else:
+                self.process.terminate()
+                try:
+                    self._communicate(timeout=4)
+                except subprocess.TimeoutExpired:
+                    dumpOutput=True
+                    self.process.kill()
+                    print("Killed during requested")
                 self._communicate()
-        else:
-            self.process.terminate()
-            try:
-                self._communicate(timeout=4)
-            except subprocess.TimeoutExpired:
-                dumpOutput=True
-                self.process.kill()
-                print("Killed during requested")
-            self._communicate()
         os.close(self.stdoutWritefd)
         #Drain the stdout buffer
         while True:
@@ -695,6 +696,7 @@ class lmManager(object):
                     print("start")
                     self.lmstarted = False
                     self.statusrecv = False
+                    self.autoresetdetect = False
                     self.statelog=[]
                     self.lmlog=[]
                     args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename, '-r', str(self.tsTimeout), '-u', str(foundDevice[0].bus), str(foundDevice[0].address)]

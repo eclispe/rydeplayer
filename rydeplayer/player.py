@@ -489,7 +489,7 @@ class rydeConfig(object):
     def loadFile(self, path):
         if os.path.exists(path) and os.path.isfile(path):
             try:
-                with open("config.yaml", 'r') as ymlconfigfile:
+                with open(path, 'r') as ymlconfigfile:
                     self.loadConfig(yaml.load(ymlconfigfile))
             except IOError as e:
                 print(e)
@@ -524,12 +524,14 @@ class player(object):
         # setup on screen display
         self.osd = rydeplayer.osd.display.Controller(self.theme, self.config.osd, self.sourceMan.getStatus(), self, self.config.tuner)
 
+        debugFunctions = {'Restart LongMynd':self.sourceMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort}
+
         # start ui
         self.app = guiState(self.theme, self.config.shutdownBehavior, self, self.osd)
-        self.app.startup(self.config, {'Restart LongMynd':self.lmMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort})
+        self.app.startup(self.config, debugFunctions)
 
         # start network
-        self.netMan = rydeplayer.network.networkManager(self.config, self.stepSM, self.setMute)
+        self.netMan = rydeplayer.network.networkManager(self.config, self.stepSM, self.setMute, debugFunctions)
 
         # setup ir
         self.irMan = ir.irManager(self.stepSM, self.config.ir)
@@ -690,10 +692,10 @@ class player(object):
 
 def run():
     parser = argparse.ArgumentParser()
-    parser.add_argument("Config File", help="YAML config file to try and load. Default: config.yaml", nargs='?', default='config.yaml')
+    parser.add_argument(metavar="config filename", dest='conffile', help="YAML config file to try and load. Default: config.yaml", nargs='?', default='config.yaml')
     args = parser.parse_args()
     print(args)
-    newplayer = player('config.yaml')
+    newplayer = player(args.conffile)
     newplayer.start()
 
 if __name__ == '__main__':

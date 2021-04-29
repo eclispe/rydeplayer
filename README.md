@@ -116,6 +116,9 @@ The ```setMute``` request accepts a ```mute``` attribute boolean for the new mut
 ### ```sendEvent```
 The ```sendEvent``` request accepts an ```event``` attribute string containing the button event to trigger.
 
+### ```debugFire```
+The ```debugFire``` request accepts a ```function``` attribute string containing the name of the debug function, these are shown in the UI debug menu.
+
 ## Run
 With both pyDispmanx and rydeplayer in the current directory or your ```PYTHONPATH``` and optionally a config.yaml in the current directory run:
 
