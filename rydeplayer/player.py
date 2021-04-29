@@ -339,7 +339,7 @@ class rydeConfig(object):
             'autoplay': True,
             'disableHardwareCodec': True,
             })
-        self.configRev = 2
+        self.configRev = 3
     #setter for default values
     def setAutoplay(self, newval):
         self.debug.autoplay = newval
