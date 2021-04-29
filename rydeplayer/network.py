@@ -55,10 +55,11 @@ class networkConfig(object):
 
 
 class networkManager(object):
-    def __init__(self, config, eventCallback, muteCallback):
+    def __init__(self, config, eventCallback, muteCallback, debugFunctions):
         self.config = config
         self.eventCallback = eventCallback
         self.muteCallback = muteCallback
+        self.debugFunctions = debugFunctions
         self.activeConnections = dict()
         if self.config.network.enabled:
             self.mainSock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -67,10 +68,11 @@ class networkManager(object):
             self.mainSock.bind((self.config.network.bindaddr, self.config.network.port))
             self.mainSock.listen(5)
             self.commands = { # dict of commands and handler functions
-                    "getBands":self.getBands,
-                    "setTune":self.setTune,
-                    "setMute": self.setMute,
-                    "sendEvent":self.sendEvent,
+                    "getBands":  self.getBands,
+                    "setTune":   self.setTune,
+                    "setMute":   self.setMute,
+                    "sendEvent": self.sendEvent,
+                    "debugFire": self.debugFire,
                     }
             self.eventMap = dict()
             for thisEvent in rydeplayer.common.navEvent:
@@ -185,3 +187,16 @@ class networkManager(object):
         thisEvent = self.eventMap[command['event']]
         stop = self.eventCallback(thisEvent)
         return (result, stop)
+
+    def debugFire(self, command):
+        result = {'success':True}
+        if 'function' not in command:
+            result['success'] = False
+            result['error'] = "No function provided"
+            return (result, False)
+        if command['function'] not in self.debugFunctions:
+            result['success'] = False
+            result['error'] = "Invalid function name provided"
+            return (result, False)
+        self.debugFunctions[command['function']]()
+        return (result, False)
