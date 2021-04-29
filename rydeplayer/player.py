@@ -1,5 +1,5 @@
 #    Ryde Player provides a on screen interface and video player for Longmynd compatible tuners.
-#    Copyright © 2020 Tim Clark
+#    Copyright © 2021 Tim Clark
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys
-from . import longmynd
+import rydeplayer.sources.common
 from . import ir
 import rydeplayer.gpio
 import rydeplayer.network
@@ -183,24 +183,64 @@ class guiState(rydeplayer.states.gui.SuperStates):
         self.osd = osd
         self.shutdownBehaviorDefault = shutdownBehaviorDefault
         self.shutdownState = rydeplayer.common.shutdownBehavior.APPSTOP
-    def startup(self, config, debugFunctions):
+
+    # callback to run all the remove and cleanup callback on the active manu states
+    def _cleanupMenuStates(self, activeCallbacks):
+        for callback in activeCallbacks:
+            callback()
+
+    # generate the menu states based on current config capabilites
+    def _genMenuStates(self, config, debugFunctions, superMenu):
+        # get variables for current config
+        tunerConfigVars = config.tuner.getVars()
+        # generate config specific menu items
+        mainMenuStates = {}
+        firstkey = None
+        lastkey = None
+        # set of cleanup functions for the menu items
+        activeCallbacks = set()
+        for key in tunerConfigVars:
+            validVar = False
+            # create sub menu items for supported var types
+            if isinstance(tunerConfigVars[key], rydeplayer.sources.common.tunerConfigIntList):
+                mainMenuStates[key+'-sel'] = rydeplayer.states.gui.MultipleNumberSelect(self.theme, key, tunerConfigVars[key], config.tuner.runCallbacks)
+                validVar = True
+
+            if validVar:
+                if firstkey is None:
+                    firstkey = key
+                if lastkey is None:
+                    lastkey = key
+                # create menu item
+                mainMenuStates[key] = rydeplayer.states.gui.MenuItem(self.theme, tunerConfigVars[key].getLongName(), lastkey, firstkey, key+'-sel', tunerConfigVars[key])
+                mainMenuStates[lastkey].down = key
+                mainMenuStates[firstkey].up = key
+                lastkey = key
+                # callback to menu header for validity updates
+                validCallFunc = functools.partial(superMenu.redrawState, mainMenuStates[key], mainMenuStates[key].getSurfaceRects())
+                tunerConfigVars[key].addValidCallback(validCallFunc)
+                activeCallbacks.add(functools.partial(tunerConfigVars[key].removeValidCallback,validCallFunc))
+        cleanupFunc = functools.partial(self._cleanupMenuStates, activeCallbacks)
+
         # main menu states, order is important to get menus and sub menus to display in the right place
-        mainMenuStates = {
-            'freq-sel' : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'freq', 'kHz', 'Freq', config.tuner.freq, config.tuner.runCallbacks),
-            'freq'     : rydeplayer.states.gui.MenuItem(self.theme, "Frequency", "power", "sr", "freq-sel", config.tuner.freq),
-            'sr-sel'   : rydeplayer.states.gui.MultipleNumberSelect(self.theme, 'sr', 'kS', 'SR', config.tuner.sr, config.tuner.runCallbacks),
-            'sr'       : rydeplayer.states.gui.MenuItem(self.theme, "Symbol Rate", "freq", "band", "sr-sel", config.tuner.sr),
+        if firstkey is None:
+            firstkey = 'band'
+        if lastkey is None:
+            lastkey = 'power'
+        baseMenuStates = {
             'band-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'band', config.bands, config.tuner.getBand, config.tuner.setBand),
-            'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", "sr", "preset", "band-sel"),
+            'band'      : rydeplayer.states.gui.MenuItem(self.theme, "Band", lastkey, "preset", "band-sel"),
             'preset-sel'  : rydeplayer.states.gui.ListSelect(self.theme, 'preset', config.presets, lambda:config.tuner, config.tuner.setConfigToMatch),
             'preset'      : rydeplayer.states.gui.MenuItem(self.theme, "Presets", "band", "power", "preset-sel"),
             'power-sel'  : SubMenuPower(self.theme, 'power', self.shutdown),
-            'power'      : rydeplayer.states.gui.MenuItem(self.theme, "Power", "preset", "freq", "power-sel"),
+            'power'      : rydeplayer.states.gui.MenuItem(self.theme, "Power", "preset", firstkey, "power-sel"),
         }
-
-        firstkey = 'freq'
+        mainMenuStates.update(baseMenuStates)
+        mainMenuStates[lastkey].down = 'band'
+        mainMenuStates[firstkey].up = 'power'
         lastkey = 'power'
         
+        # add debug menu if enabled in config
         if config.debug.enableMenu:
             # generate debug menu states
             debugMenuStates = {}
@@ -220,14 +260,18 @@ class guiState(rydeplayer.states.gui.SuperStates):
             mainMenuStates[lastkey].down = 'debug'
             mainMenuStates[firstkey].up = 'debug'
             lastkey = 'debug'
+        validCallFunc = superMenu.refreshStates
+        config.tuner.addVarChangeCallbackFunction(validCallFunc)
+        activeCallbacks.add(functools.partial(config.tuner.removeVarChangeCallbackFunction,validCallFunc))
 
+        return (mainMenuStates, firstkey, cleanupFunc)
+
+    def startup(self, config, debugFunctions):
+        # top level state machine
         self.state_dict = {
-            'menu': rydeplayer.states.gui.Menu(self.theme, 'home', mainMenuStates, "freq"),
+            'menu': rydeplayer.states.gui.Menu(self.theme, 'home', functools.partial(self._genMenuStates, config, debugFunctions)),
             'home': Home(self.theme, self.osd)
         }
-        # add callback to rederaw menu item if tuner data is updated
-        config.tuner.freq.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['freq'], mainMenuStates['freq'].getSurfaceRects()))
-        config.tuner.sr.addValidCallback(functools.partial(self.state_dict['menu'].redrawState, mainMenuStates['sr'], mainMenuStates['sr'].getSurfaceRects()))
         self.state_name = "home"
         self.state = self.state_dict[self.state_name]
         self.state.startup()
@@ -278,16 +322,13 @@ class rydeConfig(object):
     def __init__(self, theme):
         self.ir = ir.irConfig()
         self.gpio = rydeplayer.gpio.gpioConfig()
-        self.tuner = longmynd.tunerConfig()
-        #important longmynd path defaults
-        self.longmynd = type('lmConfig', (object,), {
-            'binpath': '/home/pi/longmynd/longmynd',
-            'mediapath': '/home/pi/lmmedia',
-            'statuspath': '/home/pi/lmstatus',
-            'tstimeout': 5000,
-            })
+        self.tuner = rydeplayer.sources.common.tunerConfig()
+        # source specific config
+        self.sourceConfigs = dict()
+        for thisSource in rydeplayer.sources.common.sources:
+            self.sourceConfigs[thisSource]=thisSource.getSource().getConfig()()
         self.bands = {}
-        defaultBand = longmynd.tunerBand()
+        defaultBand = rydeplayer.sources.common.tunerBand()
         self.bands[defaultBand] = "None"
         self.presets = {}
         self.osd = rydeplayer.osd.display.Config(theme)
@@ -324,8 +365,8 @@ class rydeConfig(object):
                     exsistingBands = list(self.bands.keys())
                     for bandName in config['bands']:
                         bandDict = config['bands'][bandName]
-                        bandObject = longmynd.tunerBand()
-                        if bandObject.loadBand(bandDict):
+                        bandParseSuccess, bandObject = rydeplayer.sources.common.tunerBand.loadBand(bandDict)
+                        if bandParseSuccess:
                             # dedupe band object with exsisting library
                             if bandObject in exsistingBands:
                                 bandObject = exsistingBands[exsistingBands.index(bandObject)]
@@ -340,36 +381,14 @@ class rydeConfig(object):
                 else:
                     print("Invalid band library")
                     perfectConfig = False
-            # parse critical longmynd paths
-            if 'longmynd' in config:
-                if isinstance(config['longmynd'], dict):
-                    if 'binpath' in config['longmynd']:
-                        if isinstance(config['longmynd']['binpath'], str):
-                            self.longmynd.binpath = config['longmynd']['binpath']
-                            # TODO: check this path is valid
-                        else:
-                            print("Invalid longymnd binary path")
-                            perfectConfig = False
-                    if 'mediapath' in config['longmynd']:
-                        if isinstance(config['longmynd']['mediapath'], str):
-                            self.longmynd.mediapath = config['longmynd']['mediapath']
-                        else:
-                            print("Invalid longymnd media FIFO path")
-                            perfectConfig = False
-                    if 'statuspath' in config['longmynd']:
-                        if isinstance(config['longmynd']['statuspath'], str):
-                            self.longmynd.statuspath = config['longmynd']['statuspath']
-                        else:
-                            print("Invalid longymnd status FIFO path")
-                            perfectConfig = False
-                    if 'tstimeout' in config['longmynd']:
-                        if isinstance(config['longmynd']['tstimeout'], int):
-                            self.longmynd.tstimeout = config['longmynd']['tstimeout']
-                        else:
-                            print("Invalid longmynd TS timeout")
-                            perfectConfig = False
+            # parse source specific configs
+            if 'sources' in config:
+                if isinstance(config['sources'], dict):
+                    for thisSource in rydeplayer.sources.common.sources:
+                        if thisSource.name in config['sources']:
+                            perfectConfig = perfectConfig and self.sourceConfigs[thisSource].loadConfig(config['sources'][thisSource.name])
                 else:
-                    print("Invalid longmynd config")
+                    print("Sources config not a dict")
                     perfectConfig = False
             # parse presets
             if 'presets' in config:
@@ -378,7 +397,7 @@ class rydeConfig(object):
                     exsistingPresets = list(self.presets.keys())
                     for presetName in config['presets']:
                         presetDict = config['presets'][presetName]
-                        presetObject = longmynd.tunerConfig()
+                        presetObject = rydeplayer.sources.common.tunerConfig()
                         if presetObject.loadConfig(presetDict, list(self.bands.keys())):
                             # dedupe preset object with exsisting library
                             if presetObject in exsistingPresets:
@@ -396,7 +415,7 @@ class rydeConfig(object):
                     perfectConfig = False
             # pass default tuner config to be parsed by longmynd module
             if 'default' in config:
-                defaultPreset = longmynd.tunerConfig()
+                defaultPreset = rydeplayer.sources.common.tunerConfig()
 #                perfectConfig = perfectConfig and defaultPreset.loadConfig(config['default'], list(self.bands.keys()))
                 if defaultPreset.loadConfig(config['default'], list(self.bands.keys())):
                     # dedupe preset object with exsisting library
@@ -496,14 +515,14 @@ class player(object):
         self.mute = False
         self.muteCallbacks = []
 
-        # setup longmynd
-        self.lmMan = longmynd.lmManagerThread(self.config.tuner, self.config.longmynd.binpath, self.config.longmynd.mediapath, self.config.longmynd.statuspath, self.config.longmynd.tstimeout)
-        self.config.tuner.addCallbackFunction(self.lmMan.reconfig)
+        # setup source 
+        self.sourceMan = rydeplayer.sources.common.sourceManagerThread(self.config.tuner, self.config.sourceConfigs)
+        self.config.tuner.addCallbackFunction(self.sourceMan.reconfig)
 
         self.vlcStartup()
 
         # setup on screen display
-        self.osd = rydeplayer.osd.display.Controller(self.theme, self.config.osd, self.lmMan.getStatus(), self, self.config.tuner)
+        self.osd = rydeplayer.osd.display.Controller(self.theme, self.config.osd, self.sourceMan.getStatus(), self, self.config.tuner)
 
         # start ui
         self.app = guiState(self.theme, self.config.shutdownBehavior, self, self.osd)
@@ -518,8 +537,8 @@ class player(object):
         # setup gpio
         self.gpioMan = rydeplayer.gpio.gpioManager(self.stepSM, self.config.gpio)
 
-        # start longmynd
-        self.lmMan.start()
+        # start source
+        self.sourceMan.start()
         print("Ready")
         self.monotonicState = 0;
 
@@ -528,7 +547,7 @@ class player(object):
         # main event loop
         while not quit:
             # need to regen every loop, lm stdout handler changes on lm restart
-            fds = self.irMan.getFDs() + self.lmMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs()
+            fds = self.irMan.getFDs() + self.sourceMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs()
             r, w, x = select.select(fds, [], [])
             for fd in r:
                 quit = self.handleEvent(fd)
@@ -577,7 +596,7 @@ class player(object):
     def shutdown(self, behaviour):
         del(self.osd)
         del(self.playbackState)
-        self.lmMan.shutdown()
+        self.sourceMan.shutdown()
         if behaviour is rydeplayer.common.shutdownBehavior.APPREST:
             os.execv(sys.executable, ['python3', '-m', 'rydeplayer'] + sys.argv[1:])
         elif behaviour is rydeplayer.common.shutdownBehavior.SYSSTOP:
@@ -590,8 +609,8 @@ class player(object):
         # handle ready file descriptors
         if(fd in self.irMan.getFDs()):
             quit = self.irMan.handleFD(fd)
-        elif(fd in self.lmMan.getFDs()):
-            self.lmMan.handleFD(fd)
+        elif(fd in self.sourceMan.getFDs()):
+            self.sourceMan.handleFD(fd)
         elif(fd in self.gpioMan.getFDs()):
             quit = self.gpioMan.handleFD(fd)
         elif(fd in self.osd.getFDs()):
@@ -602,7 +621,7 @@ class player(object):
 
     def updateState(self):
         # update playback state
-        state = self.lmMan.getCoreState()
+        state = self.sourceMan.getCoreState()
         if(state.isRunning):
             if(state.isLocked):
                 self.playbackState.setState(rydeplayer.states.playback.States.LOCKED)
@@ -650,8 +669,8 @@ class player(object):
         del(self.vlcPlayer)
         del(self.vlcInstance)
         importlib.reload(vlc)
-        self.lmMan.remedia()
-#        self.lmMan.restart()
+        self.sourceMan.remedia()
+#        self.sourceMan.restart()
         self.vlcStartup()
 
     def vlcStartup(self):
@@ -667,7 +686,7 @@ class player(object):
         self.vlcInstance = vlc.Instance(vlcArgs)
 
         self.vlcPlayer = self.vlcInstance.media_player_new()
-        self.vlcMedia = self.vlcInstance.media_new_fd(self.lmMan.getMediaFd().fileno())
+        self.vlcMedia = self.vlcInstance.media_new_fd(self.sourceMan.getMediaFd().fileno())
 
 def run():
     parser = argparse.ArgumentParser()

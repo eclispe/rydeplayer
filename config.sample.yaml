@@ -1,19 +1,22 @@
 ---
-configRev: 2
-longmynd:
-    binpath: /home/pi/longmynd/longmynd
-    mediapath: /home/pi/lmmedia
-    statuspath: /home/pi/lmstatus
-    tstimeout: 5000
+configRev: 3
+sources:
+    LONGMYND:
+        binpath: /home/pi/longmynd/longmynd
+        mediapath: /home/pi/lmmedia
+        statuspath: /home/pi/lmstatus
+        tstimeout: 5000
 
 bands:
     None:
+        source: LONGMYND
         lofreq: 0
         loside: SUM
         pol:  NONE
         port: BOTTOM
         gpioid: 1
     LNB Low: &bandlnblow
+        source: LONGMYND
         lofreq: 9750000
         loside: LOW
         pol:  HORIZONTAL

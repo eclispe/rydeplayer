@@ -1,5 +1,5 @@
 #    Ryde Player provides a on screen interface and video player for Longmynd compatible tuners.
-#    Copyright © 2020 Tim Clark
+#    Copyright © 2021 Tim Clark
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -439,8 +439,11 @@ class ListSelect(SuperStatesSurface):
     def cleanup(self):
         super().cleanup()
         self.surface.fill(self.theme.colours.transparent)
-    def startup(self):
-        initialvalue = self.currentValueFunction()
+    def startup(self, startValue = (False,None)):
+        if startValue[0]:
+            initialvalue = startValue[1]
+        else:
+            initialvalue = self.currentValueFunction()
         if initialvalue not in self.items:
             initialvalue = None
         self.state_name = initialvalue
@@ -575,7 +578,7 @@ class DigitSelect(StatesSurface):
 
 # sub menu for inputing whole numbers and pass new value to callback when done
 class NumberSelect(SuperStatesSurface):
-    def __init__(self, theme, backState, unittext, valueConfig, updateCallback):
+    def __init__(self, theme, backState, valueConfig, updateCallback):
         super().__init__(theme)
         # where to go back to
         self.next = backState
@@ -587,7 +590,7 @@ class NumberSelect(SuperStatesSurface):
 
         self.done = False
         self.updateCallback = updateCallback
-        self.unittext = unittext
+        self.unittext = valueConfig.getUnits()
     def cleanup(self):
         super().cleanup()
         # reset back to the first digit if we close the menu
@@ -678,12 +681,11 @@ class NumberSelect(SuperStatesSurface):
 
 # sub menu for inputing multiple whole numbers and execute a callback when done
 class MultipleNumberSelect(SubMenuGeneric):
-    def __init__(self, theme, backState, unittext, typetext, valueConfig, updateCallback):
+    def __init__(self, theme, backState, valueConfig, updateCallback):
         super().__init__(theme, backState, {}, '')
         self.valueConfig = valueConfig
         self.updateCallback = updateCallback
-        self.unittext = unittext
-        self.typetext = typetext
+        self.typetext = self.valueConfig.getShortName()
 
     def cleanup(self):
         super().cleanup()
@@ -695,7 +697,7 @@ class MultipleNumberSelect(SubMenuGeneric):
     def buildStates(self):
         if self.valueConfig.single:
             # load the number selector with no interim menu
-            self.state_dict={self.valueConfig[0]: NumberSelect(self.theme, None, self.unittext, self.valueConfig[0], self.updateCallback)}
+            self.state_dict={self.valueConfig[0]: NumberSelect(self.theme, None, self.valueConfig[0], self.updateCallback)}
             itemleft = self.left
             self.state_name = self.valueConfig[0]
             self.surface = pygame.Surface((0, 0), pygame.SRCALPHA)
@@ -718,7 +720,7 @@ class MultipleNumberSelect(SubMenuGeneric):
                 if self.state_name is None:
                     self.state_name = menuHeadingKey
                     prevState = menuHeadingKey
-                menuItem = NumberSelect(self.theme, menuHeadingKey, self.unittext, thisVal, self.updateCallback)
+                menuItem = NumberSelect(self.theme, menuHeadingKey, thisVal, self.updateCallback)
                 menuHeading = SubMenuItem(self.theme, self.typetext+" "+str(valueCounter), prevState, self.state_name, menuItemKey, thisVal)
                 self.state_dict[menuItemKey] = menuItem
                 self.state_dict[menuHeadingKey] = menuHeading
@@ -728,14 +730,14 @@ class MultipleNumberSelect(SubMenuGeneric):
                 valueCounter += 1
             # setup add button
             newValuePlaceholder = self.valueConfig[0].copyConfig()
-            self.state_dict[('new', 'item')] = NumberSelect(self.theme, ('new', 'menu'), self.unittext, newValuePlaceholder, functools.partial(self.addValue, newValuePlaceholder))
+            self.state_dict[('new', 'item')] = NumberSelect(self.theme, ('new', 'menu'), newValuePlaceholder, functools.partial(self.addValue, newValuePlaceholder))
             self.state_dict[('new', 'menu')] = SubMenuItem(self.theme, "New "+self.typetext, prevState, self.state_name, ('new', 'item'), None)
             self.state_dict[prevState].down = ('new', 'menu')
             # setup delete button
             if len(self.valueConfig) > 1:
                 valDict = {}
                 for n in range(len(self.valueConfig)):
-                    valDict[n] = self.typetext+" "+str(n)+": "+ str(self.valueConfig[n].getValue())+self.unittext
+                    valDict[n] = self.typetext+" "+str(n)+": "+ str(self.valueConfig[n].getValue())+self.valueConfig[n].getUnits()
                 self.state_dict[('del', 'item')] = ListSelect(self.theme, ('del', 'menu'), valDict, lambda:0 , self.deleteValue) 
                 self.state_dict[('del', 'menu')] = SubMenuItem(self.theme, "Delete "+self.typetext, ('new', 'menu'), self.state_name, ('del', 'item'), None)
                 self.state_dict[self.state_name].up = ('del', 'menu')
@@ -771,12 +773,13 @@ class MultipleNumberSelect(SubMenuGeneric):
 
 # overlay a manu on the screen
 class Menu(SuperStatesSurface):
-    def __init__(self, theme, nextstate, state_dict, initstate):
+    def __init__(self, theme, nextstate, stateDictGenFunc):
         super().__init__(theme)
         self.next = nextstate
         self.done = False
-        self.state_dict = state_dict
-        self.initstate = initstate
+        self.stateDictGenFunc = stateDictGenFunc
+        self.state_dict = {}
+        self.cleanupFunc = None
         # import and resize the logo
         eps = Image.open(theme.logofile)
         origwidth, origheight = eps.size
@@ -788,13 +791,17 @@ class Menu(SuperStatesSurface):
         self.logosurface = pygame.image.fromstring(epsstr, eps.size, "RGBA")
         self.surface = None
         self.dispmanxlayer = None
+        self.statesTop = 0
 
     def cleanup(self):
         super().cleanup()
+        if self.cleanupFunc is not None:
+            self.cleanupFunc()
         self.surface = None
         self.dispmanxlayer = None
 
     def startup(self):
+        self.state_dict, initstate, self.cleanupFunc=self.stateDictGenFunc(self)
         # open and connect the display
         self.dispmanxlayer = pydispmanx.dispmanxLayer(4)
         self.surface = pygame.image.frombuffer(self.dispmanxlayer, self.dispmanxlayer.size, 'RGBA')
@@ -806,9 +813,17 @@ class Menu(SuperStatesSurface):
         self.surface.blit(self.logosurface, logosurfacerect)
         self.dispmanxlayer.updateLayer()
         # set the initial substate
-        self.state_name = self.initstate
+        self.state_name = initstate
+        self.statesTop = logosurfacerect.bottom + self.theme.menuHeight*0.01
+        self._drawMenu_()
+        self.state.startup()
+        if(isinstance(self.state, MenuItem)):
+            self.surface.blit(self.state.get_surface(), self.state.surfacerect)
+        self.dispmanxlayer.updateLayer()
+
+    def _drawMenu_(self):
         self.state = self.state_dict[self.state_name]
-        drawnext = logosurfacerect.bottom + self.theme.menuHeight*0.01
+        drawnext = self.statesTop
         # draw all the states
         #TODO: auto sort so input dict isnt order sensitive
         for menuState in self.state_dict.values():
@@ -826,10 +841,6 @@ class Menu(SuperStatesSurface):
                 menuState.surfacerect.right = self.theme.menuWidth*0.9
                 drawnext = menuState.surfacerect.bottom + self.theme.menuHeight*0.01
                 self.surface.blit(menuState.get_surface(), menuState.surfacerect)
-        self.state.startup()
-        if(isinstance(self.state, MenuItem)):
-            self.surface.blit(self.state.get_surface(), self.state.surfacerect)
-        self.dispmanxlayer.updateLayer()
 
     def get_event(self, event):
         # Always handle this event
@@ -848,6 +859,44 @@ class Menu(SuperStatesSurface):
                 elif(isinstance(state, ListSelect) or isinstance(state, NumberSelect) or isinstance(state, SubMenuGeneric)):
                     self.surface.fill(self.theme.colours.transparent, rect)
             self.surface.blits(state.getBlitPairs())
+
+    def refreshStates(self, passedVar):
+        # shutdown current state if there is no support to maintain its internal state, should end up at a supported state
+        if not (isinstance(self.state, ListSelect) or isinstance(self.state, MenuItem)):
+            self.state.done = True
+            self.update()
+        # where to try and go back to after update
+        returnToStateName = self.state_name
+        returnToStateType = self.state.__class__
+        returnToStateValue = None
+        if isinstance(self.state, ListSelect):
+            returnToStateValue = self.state.state_name
+        # cleanup current state manually
+        self.state.cleanup()
+        if isinstance(self.state, StatesSurface):
+            self.redrawState(self.state, self.state.getSurfaceRects())
+        if self.cleanupFunc is not None:
+            self.cleanupFunc()
+        # paint out all top level menu states
+        for menuState in self.state_dict.values():
+            if(isinstance(menuState, MenuItem)):
+                for rect in menuState.getSurfaceRects():
+                    self.surface.fill(self.theme.colours.backgroundSubMenu, rect)
+        # create new states
+        self.state_dict, initstate, self.cleanupFunc=self.stateDictGenFunc(self)
+        # try and return to previous state
+        if returnToStateName in self.state_dict and isinstance(self.state_dict[returnToStateName], returnToStateType):
+            self.state_name = returnToStateName
+        else:
+            self.state_name = initstate
+        self._drawMenu_()
+        # try and recover previous state value
+        if isinstance(self.state, ListSelect):
+            self.state.startup((True,returnToStateValue))
+        else:
+            self.state.startup()
+        self.surface.blit(self.state.get_surface(), self.state.surfacerect)
+        self.dispmanxlayer.updateLayer()
 
     def update(self):
         super().update()

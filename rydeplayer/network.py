@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import socket, json
-import rydeplayer.longmynd
+import rydeplayer.sources.common
 import rydeplayer.common
 
 class networkConfig(object):
@@ -151,7 +151,7 @@ class networkManager(object):
             result['success'] = False
             result['error'] = "No tune details"
             return (result, False)
-        newconfig = rydeplayer.longmynd.tunerConfig()
+        newconfig = rydeplayer.sources.common.tunerConfig()
         if not newconfig.loadConfig(command['tune'],list(self.config.bands.keys())):
             result['success'] = False
             result['error'] = "Parse Failure, see Ryde log for details"

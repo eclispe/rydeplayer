@@ -18,23 +18,25 @@ Install Longmynd. Currently recommending that you use this fork as it has fixes 
 A complete sample YAML config file is provided as `config.sample.yaml`, this contains all currently configurable options. If some options are omitted from the config file then internal defaults will be used.
 ### Config file options
 * ```configRev``` The config format revision of this file, if present but wrong the file will not load, if missing file will load with warning. Current revision is 2
-* ```longmynd``` This section defines the paths for your Longmynd installation
-  * ```binpath``` path to the Longmynd binary.
-  * ```mediapath``` path to Longmynd's media FIFO, this will be auto-created if it doesn't exist.
-  * ```statuspath``` path to Longmynd's status FIFO, this will be auto-created if it doesn't exist.
-  * ```tstimeout``` TS timeout in ms, passed to longmynd with ```-r```, see longmynd manual for more details.
+* ```sources``` This section contains the source specific confgs
+  * ```longmynd``` This section defines the paths and other settings for your Longmynd installation
+    * ```binpath``` path to the Longmynd binary.
+    * ```mediapath``` path to Longmynd's media FIFO, this will be auto-created if it doesn't exist.
+    * ```statuspath``` path to Longmynd's status FIFO, this will be auto-created if it doesn't exist.
+    * ```tstimeout``` TS timeout in ms, passed to longmynd with ```-r```, see longmynd manual for more details.
 * ```bands```
   * Name of the band, you may have to put it in double quotes ```"``` if you want to use names with various caracters such as ```:``` in it. It is recommended that you add an anchor if you need to reference the band later, e.g. ```"LNB Low": &bandlnblow```
+    * ```source``` The name of the signal source type, the other options in the band only apply for certain sources, see options below for details. Currently only supports ```LONGMYND```
     * ```lofreq``` LO frequency value in kHz
     * ```loside``` Select either ```HIGH``` or ```LOW``` when using the difference mixing product where the LO is above or below the RF frequency respectively or ```SUM``` if using the sum mixing product.
-    * ```pol``` Band polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```
-    * ```port``` Band input port. Choose from ```TOP``` or ```BOTTOM```
+    * ```pol``` Band polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```. Supported sources: ```LONGMYND```
+    * ```port``` Band input port. Choose from ```TOP``` or ```BOTTOM```. Supported sources: ```LONGMYND```
     * ```gpioid``` Band GPIO ID, valid values are 0-7.
 * ```presets```
-  * Name of the preset, following the same naming rules as for bands above. It is also recommended you add an anchor to a preset to use as the default also similar to bands above, e.g. ```"QO-100 Beacon": &presetdefault```
-    * ```freq``` Preset frequency to tune, this can either be a single frequency or a list of frequencies to enable frequency scanning
+  * Name of the preset, following the same naming rules as for bands above. supported options vary depending on the source specified in the band, see indigidual options for details. It is also recommended you add an anchor to a preset to use as the default also similar to bands above, e.g. ```"QO-100 Beacon": &presetdefault```
     * ```band``` Preset band, its recommended to use an alias to a band in the band library, e.g. ```band: *bandlnblow```
-    * ```sr``` Preset symbol rate in kSps, this can either be a single symbol rate or a list of symbol rates to enable symbol rate scanning
+    * ```freq``` Preset frequency to tune, this can either be a single frequency or if using source ```LONGMYND``` a list of frequencies to enable frequency scanning
+    * ```sr``` Preset symbol rate in kSps, this can either be a single symbol rate or a list of symbol rates to enable symbol rate scanning. Supported sources: ```LONGMYND```
 
 * ```default```
   * Initial settings, its recommended to use an alias to a preset in the preset library, e.g. ```default: *presetdefault```

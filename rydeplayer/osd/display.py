@@ -15,7 +15,6 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pydispmanx, pygame
-import rydeplayer.longmynd
 import rydeplayer.common
 import enum, queue, socket, threading
 
