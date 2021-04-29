@@ -1404,6 +1404,7 @@ class lmManager(object):
                     print("start")
                     self.lmstarted = False
                     self.statusrecv = False
+                    self.autoresetdetect = False
                     self.statelog=[]
                     self.lmlog=[]
                     args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename, '-r', str(self.tsTimeout), '-u', str(foundDevice[0].bus), str(foundDevice[0].address)]
