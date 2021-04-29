@@ -328,7 +328,7 @@ class rydeConfig(object):
         for thisSource in rydeplayer.sources.common.sources:
             self.sourceConfigs[thisSource]=thisSource.getSource().getConfig()()
         self.bands = {}
-        defaultBand = rydeplayer.sources.common.tunerBand()
+        defaultBand = self.tuner.getBand()
         self.bands[defaultBand] = "None"
         self.presets = {}
         self.osd = rydeplayer.osd.display.Config(theme)

@@ -170,6 +170,10 @@ class tunerBand(object):
         return self.dumpCache
 
     @classmethod
+    def getDefaultBand(cls):
+        return cls._defaultSource.getSource().getBand()()
+
+    @classmethod
     def loadBand(cls, config):
         configUpdated = False
         perfectConfig = True
@@ -529,7 +533,7 @@ class tunerConfig(rydeplayer.common.validTracker):
     def __init__(self):
         self.updateCallbacks = [] # function that is called when the config changes
         self.varChangeCallbacks = [] # function that is called when the config changes
-        self.band = tunerBand()
+        self.band = tunerBand.getDefaultBand()
         varsChanged, self.vars = self.band.syncVars({})
         # any var that supports validity should update the validity of this when its own changes
         for key in self.vars:
