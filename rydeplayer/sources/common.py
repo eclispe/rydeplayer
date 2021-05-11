@@ -25,7 +25,7 @@ class sources(enum.Enum):
 
     def getSource(self):
         thisSource = rydeplayer.sources.common.source.getSource(self)
-        if issubclass(thisSource, rydeplayer.sources.common.source):
+        if isinstance(thisSource,type) and issubclass(thisSource, rydeplayer.sources.common.source):
             return thisSource
         else:
             raise NotImplementedError
@@ -52,7 +52,7 @@ class source(object):
         # recurse over all subclasses looking for one that claims it handles the requested source
         for subcls in cls.__subclasses__():
             thisSource = subcls.getSource(enum)
-            if issubclass(thisSource, cls):
+            if isinstance(thisSource,type) and issubclass(thisSource, cls):
                 return thisSource
         return False
 
@@ -367,13 +367,17 @@ class tunerConfigInt(rydeplayer.common.validTracker):
 
 # Stores a list of tuner integers which share limits
 class tunerConfigIntList(rydeplayer.common.validTracker):
-    def __init__(self, value, minval, maxval, single, units, shortName, longName, prereqConfigs = set()):
+    def __init__(self, value, minval, maxval, single, units, shortName, longName, prereqConfigs = None):
         initialConfig = tunerConfigInt(value, minval, maxval, units)
         initialConfig.addValidCallback(self.checkValid)
         self.units = units
         self.shortName = shortName
         self.longName = longName
-        self.prereqConfigs = prereqConfigs
+        if prereqConfigs is None:
+            self.prereqConfigs = set()
+        else:
+            self.prereqConfigs = prereqConfigs
+
         # List must never be empty
         self.values = [initialConfig]
         self.minval = minval
@@ -594,7 +598,7 @@ class tunerConfig(rydeplayer.common.validTracker):
                 for prereq in newVars[newVar].getPrereqs():
                     if prereq not in newVars:
                         allPrereqsFound = False
-                        print("Prerequsite '"+prereq+"' not found but requred by '"+newVar+"'")
+                        print("Prerequsite '"+prereq+"' not found but required by '"+newVar+"'")
                         break
                 if allPrereqsFound:
                     self.vars[newVar].updateToMatch(newVars[newVar])
