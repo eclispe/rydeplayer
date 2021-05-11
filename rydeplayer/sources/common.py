@@ -78,19 +78,18 @@ class ftdiConfigs(enum.Enum):
     UNKNOWN = (enum.auto(), frozenset(), False)
     GENERAL = (enum.auto(), frozenset([
         ('channel_a_type', 'UART'),
-        ('chip', 86),
-        ('group_0_drive', True),
+        ('group_0_drive', 16),
         ('group_0_schmitt', False),
-        ('group_0_slew', False),
-        ('group_1_drive', True),
+        ('group_0_slow_slew', False),
+        ('group_1_drive', 16),
         ('group_1_schmitt', False),
-        ('group_1_slew', False),
-        ('group_2_drive', True),
+        ('group_1_slow_slew', False),
+        ('group_2_drive', 16),
         ('group_2_schmitt', False),
-        ('group_2_slew', False),
-        ('group_3_drive', True),
+        ('group_2_slow_slew', False),
+        ('group_3_drive', 16),
         ('group_3_schmitt', False),
-        ('group_3_slew', False),
+        ('group_3_slow_slew', False),
         ('has_serial', True),
         ('in_isochronous', False),
         ('out_isochronous', False),
@@ -102,39 +101,42 @@ class ftdiConfigs(enum.Enum):
     ]), False)
     TUNER = (enum.auto(), GENERAL[1] | frozenset([
         ('channel_a_driver', 'D2XX'),
+        ('channel_b_driver', 'D2XX'),
         ('channel_b_type', 'FIFO'),
         ('remote_wakeup', False),
         ('self_powered', True),
-        ('channel_b_driver', 'D2XX'),
-        ('usb_version', 13107),
         ('power_max', 0)
+    ]), False)
+    TUNER256 = (enum.auto(), TUNER[1] | frozenset([
+        ('chip', 86),
     ]), False)
     FACTORY = (enum.auto(), GENERAL[1] | frozenset([
         ('channel_a_driver', 'VCP'),
         ('channel_b_driver', 'VCP'),
         ('channel_b_type', 'UART'),
+        ('chip', 86),
         ('power_max', 150),
         ('product', 'FT2232H MiniModule'),
         ('remote_wakeup', True),
         ('self_powered', False),
-        ('usb_version', 4369),
     ]), True)
-    MINITIOUNER = (enum.auto(), TUNER[1] | frozenset([
+    MINITIOUNER = (enum.auto(), TUNER256[1] | frozenset([
         ('product', 'USB <-> NIM tuner'),
     ]), True)
     MINITIOUNEREXPRESS = (enum.auto(), TUNER[1] | frozenset([
+        ('chip', 70),
         ('product', 'MiniTiouner-Express'),
     ]), True)
-    MINITIOUNER_S = (enum.auto(), TUNER[1] | frozenset([
+    MINITIOUNER_S = (enum.auto(), TUNER256[1] | frozenset([
         ('product', 'MiniTiouner'),
     ]), True)
-    MINITIOUNER_PRO_TS1 = (enum.auto(), TUNER[1] | frozenset([
+    MINITIOUNER_PRO_TS1 = (enum.auto(), TUNER256[1] | frozenset([
         ('product', 'MiniTiouner_Pro_TS1'),
     ]), True)
-    MINITIOUNER_PRO_TS2 = (enum.auto(), TUNER[1] | frozenset([
+    MINITIOUNER_PRO_TS2 = (enum.auto(), TUNER256[1] | frozenset([
         ('product', 'MiniTiouner_Pro_TS2'),
     ]), True)
-    KNUCKER = (enum.auto(), TUNER[1] | frozenset([
+    KNUCKER = (enum.auto(), TUNER256[1] | frozenset([
         ('product', 'CombiTuner-Express'),
     ]), True)
 
