@@ -164,6 +164,7 @@ class tunerBand(object):
         self.tunerMinFreq=0
         self.tunerMaxFreq=0
         self.defaultfreq=0
+        self.multiFreq=False
 
     def dumpBand(self):
         self.dumpCache['lofreq'] = self.freq
@@ -250,17 +251,30 @@ class tunerBand(object):
         varsUpdated = False
         newVars = dict()
         # reuse old var if its still valid
-        if 'freq' in oldVars and isinstance(oldVars['freq'], tunerConfigIntList):
+        if 'freq' in oldVars and (
+                (isinstance(oldVars['freq'], tunerConfigIntList) and self.multiFreq) or
+                (isinstance(oldVars['freq'], tunerConfigInt) and not self.multiFreq)
+                ):
             newVars['freq'] = oldVars['freq']
             # update to new range
             newVars['freq'].setLimits(min(freqrange), max(freqrange))
-            #remove prerequisites from deleted vars
-            removedVars = set(oldVars.keys())-set(newVars.keys())
-            if len(removedVars) > 0:
-                newVars['freq'].removePrereqs(removedVars)
-                varsUpdated = True
         else:
-            newVars['freq'] = tunerConfigIntList(self.defaultfreq, min(freqrange), max(freqrange), True, 'kHz', 'Freq', 'Frequency')
+            if self.multiFreq:
+                newVars['freq'] = tunerConfigIntList(self.defaultfreq, min(freqrange), max(freqrange), True, 'kHz', 'Freq', 'Frequency')
+                # map old value in if exists
+                if 'freq' in oldVars and isinstance(oldVars['freq'], tunerConfigInt):
+                    newVars['freq'].setSingleValue(oldVars['freq'].getValue())
+            else:
+                newVars['freq'] = tunerConfigInt(self.defaultfreq, min(freqrange), max(freqrange), 'kHz', 'Frequency')
+                # map old value in if exists
+                if 'freq' in oldVars and isinstance(oldVars['freq'], tunerConfigIntList):
+                    newVars['freq'].setValue(oldVars['freq'].getValues()[0])
+
+            varsUpdated = True
+        #remove prerequisites from deleted vars
+        removedVars = set(oldVars.keys())-set(newVars.keys())
+        if len(removedVars) > 0:
+            newVars['freq'].removePrereqs(removedVars)
             varsUpdated = True
         return (varsUpdated, newVars)
 
@@ -313,9 +327,30 @@ class tunerBand(object):
     def __hash__(self):
         return hash((self.freq, self.loside, self.gpioid))
 
+class tunerConfigGeneral(rydeplayer.common.validTracker):
+    def __init__(self, initValid, longName, prereqConfigs = None):
+        self.longName = longName
+        if prereqConfigs is None:
+            self.prereqConfigs = set()
+        else:
+            self.prereqConfigs = prereqConfigs
+        super().__init__(initValid)
+
+    def getLongName(self):
+        return self.longName
+
+    def getPrereqs(self):
+        return self.prereqConfigs
+
+    def addPrereqs(self, newPrereqs):
+        return self.prereqConfigs.update(newPrereqs)
+
+    def removePrereqs(self, oldPrereqs):
+        return self.prereqConfigs.difference_update(oldPrereqs)
+
 # Stores the a tuner integer and its limits
-class tunerConfigInt(rydeplayer.common.validTracker):
-    def __init__(self, value, minval, maxval, units):
+class tunerConfigInt(tunerConfigGeneral):
+    def __init__(self, value, minval, maxval, units, longName, prereqConfigs=None):
         self.units = units
         self.value = value
         if minval >= 0:
@@ -328,7 +363,8 @@ class tunerConfigInt(rydeplayer.common.validTracker):
         else:
             self.validRange = False
         # Initalise valid tracker with current valid status
-        super().__init__(value >= minval and value <= maxval and self.validRange)
+
+        super().__init__(initValid=(value >= minval and value <= maxval and self.validRange), longName=longName, prereqConfigs=prereqConfigs)
 
     def setValue(self, newval):
         if self.value != newval:
@@ -362,23 +398,41 @@ class tunerConfigInt(rydeplayer.common.validTracker):
         return self.units
 
     def copyConfig(self):
-        return tunerConfigInt(self.value, self.minval, self.maxval, self.units)
+        return tunerConfigInt(self.value, self.minval, self.maxval, self.units, self.longName)
+
+    # parse config file value and return new object using this one as a template
+    def parseNew(self, config):
+        newConf = self.copyConfig()
+        perfectConfig = True
+        updated = False
+        if isinstance(config, int):
+            newConf.setValue(config)
+            updated=True
+        else:
+            print("Config invalid for var:"+self.shortName)
+            perfectConfig = False
+        if updated:
+            return (perfectConfig, newConf)
+        else:
+            return (perfectConfig, None)
+
+    # update this to match other config
+    def updateToMatch(self, newVal):
+        if isinstance(newVal, tunerConfigInt):
+            self.setValue(newVal.getValue())
+        else:
+            raise NotImplementedError
 
     def __str__(self):
         return str(self.value)
 
 # Stores a list of tuner integers which share limits
-class tunerConfigIntList(rydeplayer.common.validTracker):
+class tunerConfigIntList(tunerConfigGeneral):
     def __init__(self, value, minval, maxval, single, units, shortName, longName, prereqConfigs = None):
-        initialConfig = tunerConfigInt(value, minval, maxval, units)
+        initialConfig = tunerConfigInt(value, minval, maxval, units, shortName)
         initialConfig.addValidCallback(self.checkValid)
         self.units = units
         self.shortName = shortName
-        self.longName = longName
-        if prereqConfigs is None:
-            self.prereqConfigs = set()
-        else:
-            self.prereqConfigs = prereqConfigs
 
         # List must never be empty
         self.values = [initialConfig]
@@ -386,10 +440,10 @@ class tunerConfigIntList(rydeplayer.common.validTracker):
         self.maxval = maxval
         self.single = single
         # Initalise valid tracker with current valid status
-        super().__init__(self.values[0].isValid())
+        super().__init__(initValid = self.values[0].isValid(), longName=longName, prereqConfigs=prereqConfigs)
    
     def append(self, newval):
-        newConfig = tunerConfigInt(newval, self.minval, self.maxval, self.units)
+        newConfig = tunerConfigInt(newval, self.minval, self.maxval, self.units, self.shortName)
         newConfig.addValidCallback(self.checkValid)
         self.values.append(newConfig)
         self.single=False
@@ -435,23 +489,11 @@ class tunerConfigIntList(rydeplayer.common.validTracker):
     def getShortName(self):
         return self.shortName
 
-    def getLongName(self):
-        return self.longName
-
     def getValues(self):
         values = []
         for valueOb in self.values:
             values.append(valueOb.getValue())
         return values
-    
-    def getPrereqs(self):
-        return self.prereqConfigs
-
-    def addPrereqs(self, newPrereqs):
-        return self.prereqConfigs.update(newPrereqs)
-    
-    def removePrereqs(self, oldPrereqs):
-        return self.prereqConfigs.difference_update(oldPrereqs)
 
     # produce a deep copy of the list
     def copyConfig(self):

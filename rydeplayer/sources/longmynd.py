@@ -780,6 +780,7 @@ class band(rydeplayer.sources.common.tunerBand):
         self.pol = PolarityEnum.NONE
         self.port = inPortEnum.TOP
         super().__init__()
+        self.multiFreq=True
         self.tunerMinFreq = 144000
         self.tunerMaxFreq = 2450000
         self.defaultfreq = 741500
