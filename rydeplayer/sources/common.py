@@ -426,6 +426,15 @@ class tunerConfigInt(tunerConfigGeneral):
     def __str__(self):
         return str(self.value)
 
+    def __eq__(self, other):
+        if not isinstance(other,tunerConfigInt):
+            raise NotImplementedError
+        else:
+            return other.getValue() == self.getValue()
+
+    def __hash__(self):
+        return hash(self.getValue())
+
 # Stores a list of tuner integers which share limits
 class tunerConfigIntList(tunerConfigGeneral):
     def __init__(self, value, minval, maxval, single, units, shortName, longName, prereqConfigs = None):
