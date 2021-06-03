@@ -389,8 +389,8 @@ class rydeConfig(object):
             if 'sources' in config:
                 if isinstance(config['sources'], dict):
                     for thisSource in rydeplayer.sources.common.sources:
-                        if thisSource.name in config['sources']:
-                            perfectConfig = perfectConfig and self.sourceConfigs[thisSource].loadConfig(config['sources'][thisSource.name])
+                        if thisSource.name.lower() in config['sources']:
+                            perfectConfig = perfectConfig and self.sourceConfigs[thisSource].loadConfig(config['sources'][thisSource.name.lower()])
                 else:
                     print("Sources config not a dict")
                     perfectConfig = False
