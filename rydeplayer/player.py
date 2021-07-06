@@ -647,7 +647,10 @@ class player(object):
                     self.vlcStop()
                 self.gpioMan.setRXgood(False)
         else:
-            self.playbackState.setState(rydeplayer.states.playback.States.NOLONGMYND)
+            if state.isStarted:
+                self.playbackState.setState(rydeplayer.states.playback.States.SOURCELOAD)
+            else:
+                self.playbackState.setState(rydeplayer.states.playback.States.NOSOURCE)
             if self.config.debug.autoplay:
                 self.vlcStop()
 #               print("parsed:"+str(vlcMedia.is_parsed()))

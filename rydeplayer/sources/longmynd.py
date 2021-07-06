@@ -377,7 +377,7 @@ class lmManager(object):
         self.stateMonotonic = 0
         self.tunerStatus = tunerStatus()
         # state type for the core longmynd state
-        self.coreStateType = collections.namedtuple('coreState', ['isRunning', 'isLocked', 'monotonicState'])
+        self.coreStateType = collections.namedtuple('coreState', ['isRunning', 'isStarted', 'isLocked', 'monotonicState'])
 
     def reconfig(self, config):
         """reconfigures longmynd"""
@@ -403,8 +403,14 @@ class lmManager(object):
             fdCallbacks[fd]()
     def getCoreState(self):
         """gets the core system state in a single call"""
-        state = self.coreStateType(self.isRunning(), self.isLocked(), self.getMonotonicState())
+        state = self.coreStateType(self.isRunning(), self.isStarted(), self.isLocked(), self.getMonotonicState())
         return state
+    def isStarted(self):
+        if(self.process != None):
+            polled = self.process.poll()
+            return polled==None
+        else:
+            return False
     def isRunning(self):
         if(self.process != None and self.lmstarted and self.statusrecv):
             polled = self.process.poll()

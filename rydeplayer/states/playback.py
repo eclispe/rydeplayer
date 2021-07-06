@@ -20,7 +20,8 @@ class States(enum.Enum):
     PLAYING = enum.auto()
     LOCKED = enum.auto()
     NOLOCK = enum.auto()
-    NOLONGMYND = enum.auto()
+    NOSOURCE = enum.auto()
+    SOURCELOAD = enum.auto()
 
 # manager for full screen plyback state messages
 class StateDisplay(object):
@@ -32,7 +33,7 @@ class StateDisplay(object):
         self.backDispmanxlayer = pydispmanx.dispmanxLayer(0)
         self.frontSurface = pygame.image.frombuffer(self.frontDispmanxlayer, self.frontDispmanxlayer.size, 'RGBA')
         self.backSurface = pygame.image.frombuffer(self.backDispmanxlayer, self.backDispmanxlayer.size, 'RGBA')
-        self.setState(States.NOLONGMYND)
+        self.setState(States.NOSOURCE)
         self.frontDispmanxlayer.updateLayer()
     
     # redraw a fullscreen display with a multiline message over it
@@ -69,8 +70,10 @@ class StateDisplay(object):
             else:
                 self.frontSurface.fill(self.theme.colours.backgroundPlayState)
                 displayText = "ERROR\nNOT FOUND"
-                if(newState == States.NOLONGMYND):
-                    displayText = "LongMynd\nNot Loaded"
+                if(newState == States.NOSOURCE):
+                    displayText = "Source Interface\nNot Loaded"
+                elif(newState == States.SOURCELOAD):
+                    displayText = "Source Interface\nLoading"
                 elif(newState == States.NOLOCK):
                     displayText = "Not\nLocked"
                 self.drawMessage(displayText, self.frontSurface)
