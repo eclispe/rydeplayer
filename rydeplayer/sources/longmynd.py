@@ -77,9 +77,9 @@ class DVBSModulationEnum(enum.Enum):
         return self.longName
 
 # Container for tuner status data with change callbacks
-class tunerStatus(object):
+class tunerStatus(rydeplayer.sources.common.sourceStatus):
     def __init__(self):
-        self.onChangeCallbacks = []
+        super().__init__()
         self.mer = None
         self.provider = ""
         self.service = ""
@@ -88,19 +88,6 @@ class tunerStatus(object):
         self.pids = {}
         self.freq = None
         self.sr = None
-
-    def addOnChangeCallback(self, callback):
-        self.onChangeCallbacks.append(callback)
-
-    def removeOnChangeCallback(self, callback):
-        self.onChangeCallbacks.remove(callback)
-
-    def addCallbacksFrom(self, fromconfig):
-        self.onChangeCallbacks.extend(fromconfig.onChangeCallbacks.copy())
-
-    def onChangeFire(self):
-        for callback in self.onChangeCallbacks:
-            callback(self)
 
     def setProvider(self, newval):
         if(isinstance(newval, str)):
@@ -288,12 +275,12 @@ class tunerStatus(object):
         return self.sr
 
     def copyStatus(self):
-        newstatus = tunerStatus()
+        newstatus = self.__class__()
         newstatus.setStatusToMatch(self)
         return newstatus
 
     def setStatusToMatch(self, fromStatus):
-        changed = False
+        changed = super().setStatusToMatch(fromStatus)
         newMer = fromStatus.getMer()
         if self.mer != newMer:
             self.mer = newMer

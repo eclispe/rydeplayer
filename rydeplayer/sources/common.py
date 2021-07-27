@@ -152,6 +152,29 @@ class ftdiConfigs(enum.Enum):
     def canIdentify(self):
         return self._canIdentify
 
+class sourceStatus(object):
+    def __init__(self):
+        self.onChangeCallbacks = []
+
+    def addOnChangeCallback(self, callback):
+        self.onChangeCallbacks.append(callback)
+
+    def removeOnChangeCallback(self, callback):
+        self.onChangeCallbacks.remove(callback)
+
+    def addCallbacksFrom(self, fromconfig):
+        fromCallbacks = fromconfig.onChangeCallbacks
+        toCallbacks = fromCallbacks.copy()
+        self.onChangeCallbacks.extend(toCallbacks)
+
+    def onChangeFire(self):
+        for callback in self.onChangeCallbacks:
+            callback(self)
+
+    def setStatusToMatch(self, fromStatus):
+        changed = False
+        return changed
+
 class tunerBand(object):
     _defaultSource = sources.LONGMYND
     def __init__(self):
@@ -784,6 +807,7 @@ class sourceManagerThread(object):
         self.coreStateThread = self.sourceMan.getCoreState()
         # create and start thread
         self.thread = threading.Thread(target=self.threadLoop, daemon=True)
+        self.sourceStatus.onChangeFire()
 
     def reconfig(self, config):
         if config.getBand().getSource() == self.currentSource:

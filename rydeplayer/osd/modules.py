@@ -15,7 +15,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import pygame
-import rydeplayer.sources.longmynd
+import rydeplayer.sources.common
 from PIL import Image
 
 # Generic OSD display module
@@ -226,7 +226,7 @@ class program(generic):
         self.pidsRect = None
 
     def updateVal(self, newval):
-        if(isinstance(newval, rydeplayer.sources.longmynd.tunerStatus)):
+        if(isinstance(newval, rydeplayer.sources.common.sourceStatus)):
             self.provider = newval.getProvider()
             self.service = newval.getService()
             self.modulation = newval.getModulation()

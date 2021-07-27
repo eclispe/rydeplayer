@@ -16,6 +16,7 @@
 
 import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys
 import rydeplayer.sources.common
+import rydeplayer.sources.longmynd
 from . import ir
 import rydeplayer.gpio
 import rydeplayer.network
