@@ -21,7 +21,7 @@ import enum, queue, socket, threading
 # Enum containing a list of all possible modules
 class AvailableModules(enum.Enum):
     MUTE = enum.auto()
-    MER = enum.auto()
+    SIGLEVEL = enum.auto()
     REPORT = enum.auto()
     PROGRAM = enum.auto()
     FREQ = enum.auto()
@@ -64,7 +64,7 @@ class Group(object):
 class Config(object):
     def __init__(self, theme):
         self.theme = theme
-        self.activeGroup={AvailableModules.MUTE:None, AvailableModules.MER:None, AvailableModules.PROGRAM:None}
+        self.activeGroup={AvailableModules.MUTE:None, AvailableModules.SIGLEVEL:None, AvailableModules.PROGRAM:None}
         self.inactiveGroup={AvailableModules.MUTE:None}
         self.timers={TimerLength.PROGRAMTRIGGER: 5, TimerLength.USERTRIGGER: 5}
 
@@ -194,10 +194,10 @@ class Config(object):
 
 # On screen display controller
 class Controller(object):
-    def __init__(self, theme, config, longmyndStatus, player, tunerConfig):
+    def __init__(self, theme, config, sourceStatus, player, tunerConfig):
         self.theme = theme
         self.config = config
-        self.longmyndStatus = longmyndStatus
+        self.sourceStatus = sourceStatus
         self.player = player
         self.tunerConfig = tunerConfig
         # Create display layer
@@ -207,18 +207,18 @@ class Controller(object):
         self.modules = dict()
         self.modules[AvailableModules.MUTE]=rydeplayer.osd.modules.mute(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.03, 0.1, 0.1))
         self.player.addMuteCallback(self.modules[AvailableModules.MUTE].updateVal)
-        self.modules[AvailableModules.MER]=rydeplayer.osd.modules.mer(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.15, 0.2, 0.15))
-        self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.MER].updateVal)
+        self.modules[AvailableModules.SIGLEVEL]=rydeplayer.osd.modules.sigLevel(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.15, 0.2, 0.15))
+        self.sourceStatus.addOnChangeCallback(self.modules[AvailableModules.SIGLEVEL].updateVal)
         self.modules[AvailableModules.REPORT]=rydeplayer.osd.modules.report(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.32, 0.2, 0.15))
-        self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.REPORT].updateVal)
+        self.sourceStatus.addOnChangeCallback(self.modules[AvailableModules.REPORT].updateVal)
         self.modules[AvailableModules.PROGRAM]=rydeplayer.osd.modules.program(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.BC, 0, 0.03, 0.73, 0.2))
-        self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.PROGRAM].updateVal)
+        self.sourceStatus.addOnChangeCallback(self.modules[AvailableModules.PROGRAM].updateVal)
         self.tunerConfig.addCallbackFunction(self._updatePresetName)
         self._updatePresetName(self.tunerConfig)
         self.modules[AvailableModules.FREQ]=rydeplayer.osd.modules.freq(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.BR, 0.03, 0.03, 0.25, 0.04))
-        self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.FREQ].updateVal)
+        self.sourceStatus.addOnChangeCallback(self.modules[AvailableModules.FREQ].updateVal)
         self.modules[AvailableModules.SR]=rydeplayer.osd.modules.sr(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.BR, 0.03, 0.07, 0.25, 0.04))
-        self.longmyndStatus.addOnChangeCallback(self.modules[AvailableModules.SR].updateVal)
+        self.sourceStatus.addOnChangeCallback(self.modules[AvailableModules.SR].updateVal)
         # Initalise groups
         self.activeGroup = Group(self.theme, self)
         self.activeGroup.setModules(config.getActiveGroup())

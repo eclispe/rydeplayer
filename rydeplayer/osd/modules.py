@@ -70,8 +70,8 @@ class generic(object):
             else:
                 self.drawCallback(self, rects, deferRedraw = deferRedraw)
 
-# module that displays the current MER
-class mer(generic):
+# module that displays the current signal level
+class sigLevel(generic):
     def __init__ (self, theme, drawCallback, rect):
         super().__init__(theme, drawCallback, rect)
         self.rect = rect.copy()

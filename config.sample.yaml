@@ -82,7 +82,7 @@ osd:
             y: 0.3
             w: 0.3
             h: 0.3
-        MER: null
+        SIGLEVEL: null
         REPORT: null
         PROGRAM: null
         FREQ: null

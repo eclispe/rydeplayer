@@ -65,7 +65,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
       * ```y``` Same as for ```x``` but what fraction of the display height is the top/bottom (depending on datum).
       * ```w``` The width of the module as a fraction of the display height, valid values 0-1.
       * ```x``` Same as for ```w``` but for module height.
-    * ```MER``` Displays the MER of the current recived signal, size/location configuration the same as for ```MUTE```.
+    * ```SIGLEVEL``` Displays the MER of the current recived signal, size/location configuration the same as for ```MUTE```.
     * ```REPORT``` Displays the difference between the MER and the minimal viable MER for the current modulation and FEC, size/location configuration the same as for ```MUTE```.
     * ```PROGRAM``` Displays the service, provider, preset name, modulation type and transport stream PID details for the current signal, size/location configuration the same as for ```MUTE```.
   * ```inactive``` The same as the active list but for when the OSD is inactive.
