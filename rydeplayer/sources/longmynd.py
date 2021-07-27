@@ -274,6 +274,21 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
     def getSR(self):
         return self.sr
 
+    def getSignalLevelMeta(self):
+        def processVal(newval):
+            return newval.getMer()
+        return self.meterConfig("db MER","", processVal)
+
+    def getSignalReportMeta(self):
+        def processVal(newval):
+            mod = newval.getModulation()
+            if mod is None:
+                return None
+            else:
+                mer = newval.getMer()
+                return round(mer - mod.threshold,1)
+        return self.meterConfig("db Margin","D", processVal)
+
     def copyStatus(self):
         newstatus = self.__class__()
         newstatus.setStatusToMatch(self)

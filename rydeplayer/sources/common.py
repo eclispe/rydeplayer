@@ -155,6 +155,7 @@ class ftdiConfigs(enum.Enum):
 class sourceStatus(object):
     def __init__(self):
         self.onChangeCallbacks = []
+        self.meterConfig = collections.namedtuple('meterConfig', ["staticText", "prefixText", "processValueFunc"])
 
     def addOnChangeCallback(self, callback):
         self.onChangeCallbacks.append(callback)
@@ -170,6 +171,12 @@ class sourceStatus(object):
     def onChangeFire(self):
         for callback in self.onChangeCallbacks:
             callback(self)
+
+    def getSignalLevelMeta(self):
+        return None
+
+    def getSignalReportMeta(self):
+        return None
 
     def setStatusToMatch(self, fromStatus):
         changed = False

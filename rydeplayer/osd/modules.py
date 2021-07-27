@@ -70,107 +70,77 @@ class generic(object):
             else:
                 self.drawCallback(self, rects, deferRedraw = deferRedraw)
 
-# module that displays the current signal level
-class sigLevel(generic):
+# generic module for displaying a small numeric value
+class meterDisplay(generic):
     def __init__ (self, theme, drawCallback, rect):
         super().__init__(theme, drawCallback, rect)
         self.rect = rect.copy()
         self.renderedbox = None
-        self.mer = None
-        self.staticText = "dB MER" # static unit text
+        self.value = None
+        self.renderedValue = None
         self.staticTextSurface = None
         self.dynamicTextRect = None
-
-    def updateVal(self, newval):
-        self.mer = newval.getMer()
-        self.redraw()
+        self.meterConfig = None
+        self.renderedMeterConfig = None
 
     def redraw(self, rects = None, deferRedraw = False):
         # if the layout needs recalcuating because its new, moved or changed size
-        if(self.renderedbox is None or self.renderedbox != self.rect):
+        if(self.renderedbox is None or self.renderedbox != self.rect or self.meterConfig != self.renderedMeterConfig):
             self.surface.fill(self.theme.colours.transparent)
-            meterbar = pygame.Rect((0,0),(self.rect.height*0.25, self.rect.height)) # placeholder space for a meter
-            meterbar.right = self.rect.width
-            textwidth = self.rect.width - meterbar.width # total width available for the text
-            staticfontsize = self.theme.fontSysSizeOptimize(self.staticText, textwidth*0.8, 'freesans')
-            staticfont = pygame.font.SysFont('freesans', staticfontsize) # font for the static unit text
-            dynamicfontsize = self.theme.fontSysSizeOptimize("25.5", textwidth*0.8, 'freesans')
-            self.dynamicfont = pygame.font.SysFont('freesans', dynamicfontsize) # font for the actual MER value
-            textheight = staticfont.get_linesize() + self.dynamicfont.get_linesize()
-            self.textbox = pygame.Rect((0,0), (textwidth, textheight))
-            self.textbox.centery=self.rect.height/2 # center the box containing the text vertically in the bigger box
-            self.staticTextSurface = self.theme.outlineFontRender(self.staticText, staticfont, self.theme.colours.white, self.theme.colours.black, 1)
-            staticTextRect = self.staticTextSurface.get_rect()
-            staticTextRect.bottom = self.textbox.bottom
-            staticTextRect.centerx = self.textbox.centerx
-            self.surface.blit(self.staticTextSurface, staticTextRect)
-            self.renderedbox = self.rect.copy()
-        # render the main MER value if it is set
-        if(self.mer is not None):
+            self.renderedMeterConfig = self.meterConfig
+            if(self.meterConfig is not None):
+                meterbar = pygame.Rect((0,0),(self.rect.height*0.25, self.rect.height)) # placeholder space for a meter
+                meterbar.right = self.rect.width
+                textwidth = self.rect.width - meterbar.width # total width available for the text
+                staticfontsize = self.theme.fontSysSizeOptimize(self.renderedMeterConfig.staticText, textwidth*0.8, 'freesans')
+                staticfont = pygame.font.SysFont('freesans', staticfontsize) # font for the static unit text
+                dynamicfontsize = self.theme.fontSysSizeOptimize("25.5", textwidth*0.8, 'freesans')
+                self.dynamicfont = pygame.font.SysFont('freesans', dynamicfontsize) # font for the actual report value
+                textheight = staticfont.get_linesize() + self.dynamicfont.get_linesize()
+                self.textbox = pygame.Rect((0,0), (textwidth, textheight))
+                self.textbox.centery=self.rect.height/2 # center the box containing the text vertically in the bigger box
+                self.staticTextSurface = self.theme.outlineFontRender(self.renderedMeterConfig.staticText, staticfont, self.theme.colours.white, self.theme.colours.black, 1)
+                staticTextRect = self.staticTextSurface.get_rect()
+                staticTextRect.bottom = self.textbox.bottom
+                staticTextRect.centerx = self.textbox.centerx
+                self.surface.blit(self.staticTextSurface, staticTextRect)
+                self.renderedbox = self.rect.copy()
+
+        if(self.meterConfig is not None):
+            self.renderedValue = self.value
             if(self.dynamicTextRect is not None):
                 self.surface.fill(self.theme.colours.transparent, self.dynamicTextRect)
-            dynamicTextSurface = self.theme.outlineFontRender(str(self.mer), self.dynamicfont, self.theme.colours.white, self.theme.colours.black, 1)
+            if self.value is None:
+                valueText = "-"
+            else:
+                valueText = self.renderedMeterConfig.prefixText + str(self.value)
+            dynamicTextSurface = self.theme.outlineFontRender(valueText, self.dynamicfont, self.theme.colours.white, self.theme.colours.black, 1)
             self.dynamicTextRect = dynamicTextSurface.get_rect()
             self.dynamicTextRect.top = self.textbox.top
             self.dynamicTextRect.centerx = self.textbox.centerx
             self.surface.blit(dynamicTextSurface, self.dynamicTextRect)
         super().redraw(rects, deferRedraw)
 
-# module that displays the current signal report also known as "D number"
-class report(generic):
-    def __init__ (self, theme, drawCallback, rect):
-        super().__init__(theme, drawCallback, rect)
-        self.rect = rect.copy()
-        self.renderedbox = None
-        self.report = None
-        self.renderedReport = None
-        self.staticText = "Report" # static unit text
-        self.staticTextSurface = None
-        self.dynamicTextRect = None
-
     def updateVal(self, newval):
-        mod = newval.getModulation()
-        if mod is None:
-            self.report = None
+        if self.meterConfig is not None:
+            self.value = self.meterConfig.processValueFunc(newval)
         else:
-            mer = newval.getMer()
-            self.report = round(mer - mod.threshold,1)
+            self.vale = None
         self.redraw()
 
-    def redraw(self, rects = None, deferRedraw = False):
-        # if the layout needs recalcuating because its new, moved or changed size
-        if(self.renderedbox is None or self.renderedbox != self.rect):
-            self.surface.fill(self.theme.colours.transparent)
-            meterbar = pygame.Rect((0,0),(self.rect.height*0.25, self.rect.height)) # placeholder space for a meter
-            meterbar.right = self.rect.width
-            textwidth = self.rect.width - meterbar.width # total width available for the text
-            staticfontsize = self.theme.fontSysSizeOptimize(self.staticText, textwidth*0.8, 'freesans')
-            staticfont = pygame.font.SysFont('freesans', staticfontsize) # font for the static unit text
-            dynamicfontsize = self.theme.fontSysSizeOptimize("25.5", textwidth*0.8, 'freesans')
-            self.dynamicfont = pygame.font.SysFont('freesans', dynamicfontsize) # font for the actual report value
-            textheight = staticfont.get_linesize() + self.dynamicfont.get_linesize()
-            self.textbox = pygame.Rect((0,0), (textwidth, textheight))
-            self.textbox.centery=self.rect.height/2 # center the box containing the text vertically in the bigger box
-            self.staticTextSurface = self.theme.outlineFontRender(self.staticText, staticfont, self.theme.colours.white, self.theme.colours.black, 1)
-            staticTextRect = self.staticTextSurface.get_rect()
-            staticTextRect.bottom = self.textbox.bottom
-            staticTextRect.centerx = self.textbox.centerx
-            self.surface.blit(self.staticTextSurface, staticTextRect)
-            self.renderedbox = self.rect.copy()
-        # render the main MER value if it is set
-        self.renderedReport = self.report
-        if(self.dynamicTextRect is not None):
-            self.surface.fill(self.theme.colours.transparent, self.dynamicTextRect)
-        if self.report is None:
-            reportText = "-"
-        else:
-            reportText = "D"+str(self.report)
-        dynamicTextSurface = self.theme.outlineFontRender(reportText, self.dynamicfont, self.theme.colours.white, self.theme.colours.black, 1)
-        self.dynamicTextRect = dynamicTextSurface.get_rect()
-        self.dynamicTextRect.top = self.textbox.top
-        self.dynamicTextRect.centerx = self.textbox.centerx
-        self.surface.blit(dynamicTextSurface, self.dynamicTextRect)
-        super().redraw(rects, deferRedraw)
+# module that displays the current signal level
+class sigLevel(meterDisplay):
+
+    def updateVal(self, newval):
+        self.meterConfig = newval.getSignalLevelMeta()
+        super().updateVal(newval)
+
+# module that displays the current signal report also known as "D number"
+class report(meterDisplay):
+
+    def updateVal(self, newval):
+        self.meterConfig = newval.getSignalReportMeta()
+        super().updateVal(newval)
 
 # module that displays an icon when muted
 class mute(generic):
@@ -377,3 +347,6 @@ class sr(numericDisplay):
             if newsrround != self.value:
                 self.value = newsrround
                 self.redraw()
+        elif self.value is not None:
+            self.value = None
+            self.redraw()
