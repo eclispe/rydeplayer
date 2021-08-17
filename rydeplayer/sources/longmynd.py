@@ -289,6 +289,16 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
                 return round(mer - mod.threshold,1)
         return self.meterConfig("db Margin","D", processVal)
 
+    def getSignalSourceMeta(self):
+        def processVal(newval):
+            return newval.getFreq()
+        return self.numericConfig("Hz",3, processVal)
+
+    def getSignalBandwidthMeta(self):
+        def processVal(newval):
+            return newval.getSR()
+        return self.numericConfig("S",3, processVal)
+
     def copyStatus(self):
         newstatus = self.__class__()
         newstatus.setStatusToMatch(self)

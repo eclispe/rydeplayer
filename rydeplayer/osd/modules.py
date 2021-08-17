@@ -293,31 +293,44 @@ class program(generic):
 
 # module that displays the a numeric value with units
 class numericDisplay(generic):
-    def __init__ (self, theme, drawCallback, rect, units):
+    def __init__ (self, theme, drawCallback, rect):
         super().__init__(theme, drawCallback, rect)
         self.rect = rect.copy()
-        self.units = units
         self.renderedbox = None
         self.value = None
         self.dynamicTextRect = None
+        self.numericConfig = None
 
     def updateVal(self, newval):
-        self.value = newval.getFreq()
-        self.redraw()
+        if self.numericConfig is not None:
+            newvalue = self.numericConfig.processValueFunc(newval)
+            if newvalue is not None:
+                newvalueround = round(newvalue)
+                if newvalueround != self.value:
+                    self.value = newvalueround
+                    self.redraw()
+            else:
+                self.value = None
+                self.redraw()
+
+        else:
+            self.value = None
+            self.redraw()
 
     def redraw(self, rects = None, deferRedraw = False):
         # if the layout needs recalcuating because its new, moved or changed size
-        if(self.renderedbox is None or self.renderedbox != self.rect):
+        if self.renderedbox is None or self.renderedbox != self.rect:
             self.surface.fill(self.theme.colours.transparent)
             dynamicfontsize = self.theme.fontSysSizeOptimizeHeight(self.rect.height, 'freesans')
             self.dynamicfont = pygame.font.SysFont('freesans', dynamicfontsize) # font for value to be displayed
             self.renderedbox = self.rect.copy()
         # render a blank if it is not set
-        if(self.value is None):
+        if self.value is None or self.numericConfig is None:
             valuestr = ""
         else:
-            valuestr = str(self.value)+self.units
-        if(self.dynamicTextRect is not None):
+            magUnit = "k"
+            valuestr = str(self.value)+magUnit+self.numericConfig.staticUnits
+        if self.dynamicTextRect is not None :
             self.surface.fill(self.theme.colours.transparent, self.dynamicTextRect)
         dynamicTextSurface = self.theme.outlineFontRender(valuestr, self.dynamicfont, self.theme.colours.white, self.theme.colours.black, 1)
         self.dynamicTextRect = dynamicTextSurface.get_rect()
@@ -329,24 +342,17 @@ class numericDisplay(generic):
 # module that displays the current frequency
 class freq(numericDisplay):
     def __init__ (self, theme, drawCallback, rect):
-        super().__init__(theme, drawCallback, rect, " kHz")
+        super().__init__(theme, drawCallback, rect)
 
     def updateVal(self, newval):
-        self.value = newval.getFreq()
-        self.redraw()
+        self.numericConfig = newval.getSignalSourceMeta()
+        super().updateVal(newval)
 
 # module that displays the current symbol rate
-class sr(numericDisplay):
+class bw(numericDisplay):
     def __init__ (self, theme, drawCallback, rect):
-        super().__init__(theme, drawCallback, rect, " kS")
+        super().__init__(theme, drawCallback, rect)
 
     def updateVal(self, newval):
-        newsr = newval.getSR()
-        if newsr is not None:
-            newsrround = round(newsr)
-            if newsrround != self.value:
-                self.value = newsrround
-                self.redraw()
-        elif self.value is not None:
-            self.value = None
-            self.redraw()
+        self.numericConfig = newval.getSignalBandwidthMeta()
+        super().updateVal(newval)

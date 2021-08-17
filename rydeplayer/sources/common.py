@@ -156,6 +156,7 @@ class sourceStatus(object):
     def __init__(self):
         self.onChangeCallbacks = []
         self.meterConfig = collections.namedtuple('meterConfig', ["staticText", "prefixText", "processValueFunc"])
+        self.numericConfig = collections.namedtuple('numericConfig', ["staticUnits", "unitMagnitude", "processValueFunc"])
 
     def addOnChangeCallback(self, callback):
         self.onChangeCallbacks.append(callback)
@@ -176,6 +177,12 @@ class sourceStatus(object):
         return None
 
     def getSignalReportMeta(self):
+        return None
+
+    def getSignalSourceMeta(self):
+        return None
+
+    def getSignalBandwidthMeta(self):
         return None
 
     def setStatusToMatch(self, fromStatus):

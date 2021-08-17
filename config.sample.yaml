@@ -86,7 +86,7 @@ osd:
         REPORT: null
         PROGRAM: null
         FREQ: null
-        SR: null
+        BW: null
     inactive:
         MUTE: null
 
