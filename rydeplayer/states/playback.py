@@ -71,9 +71,9 @@ class StateDisplay(object):
                 self.frontSurface.fill(self.theme.colours.backgroundPlayState)
                 displayText = "ERROR\nNOT FOUND"
                 if(newState == States.NOSOURCE):
-                    displayText = "Source Interface\nNot Loaded"
+                    displayText = "Source\nnot\nConnected"
                 elif(newState == States.SOURCELOAD):
-                    displayText = "Source Interface\nLoading"
+                    displayText = "Waiting\nfor\nSource"
                 elif(newState == States.NOLOCK):
                     displayText = "Not\nLocked"
                 self.drawMessage(displayText, self.frontSurface)

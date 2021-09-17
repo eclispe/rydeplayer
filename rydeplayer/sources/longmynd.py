@@ -194,7 +194,7 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
     def getSignalLevelMeta(self):
         def processVal(newval):
             return newval.getMer()
-        return self.meterConfig("db MER","", processVal)
+        return self.meterConfig("dB MER","", processVal)
 
     def getSignalReportMeta(self):
         def processVal(newval):
@@ -204,7 +204,7 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
             else:
                 mer = newval.getMer()
                 return round(mer - mod.threshold,1)
-        return self.meterConfig("db Margin","D", processVal)
+        return self.meterConfig("dB Margin","D", processVal)
 
     def getSignalBandwidthMeta(self):
         def processVal(newval):
