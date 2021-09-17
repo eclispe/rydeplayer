@@ -20,6 +20,13 @@ import pyftdi.ftdi
 import pyftdi.usbtools
 import pyftdi.eeprom
 
+class sourceModeEnum(enum.Enum):
+    def __init__(self, enum, longName):
+        self.longName = longName
+
+    def __str(self):
+        return self.longName
+
 class sources(enum.Enum):
     LONGMYND = enum.auto()
 
@@ -157,6 +164,12 @@ class sourceStatus(object):
         self.onChangeCallbacks = []
         self.meterConfig = collections.namedtuple('meterConfig', ["staticText", "prefixText", "processValueFunc"])
         self.numericConfig = collections.namedtuple('numericConfig', ["staticUnits", "unitMagnitude", "processValueFunc"])
+        self.modulation = None
+        self.provider = ""
+        self.service = ""
+        self.dvbVersion = None
+        self.pids = {}
+        self.freq = None
 
     def addOnChangeCallback(self, callback):
         self.onChangeCallbacks.append(callback)
@@ -173,6 +186,78 @@ class sourceStatus(object):
         for callback in self.onChangeCallbacks:
             callback(self)
 
+    def setProvider(self, newval):
+        if(isinstance(newval, str)):
+            if self.provider != newval:
+                self.provider = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setService(self, newval):
+        if(isinstance(newval, str)):
+            if self.service != newval:
+                self.service = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def setPIDs(self, newval):
+        codecmap = {
+             2:rydeplayer.sources.common.CodecEnum.MP2,
+             3:rydeplayer.sources.common.CodecEnum.MPA,
+             4:rydeplayer.sources.common.CodecEnum.MPA,
+            15:rydeplayer.sources.common.CodecEnum.AAC,
+            16:rydeplayer.sources.common.CodecEnum.H263,
+            27:rydeplayer.sources.common.CodecEnum.H264,
+            32:rydeplayer.sources.common.CodecEnum.MPA,
+            36:rydeplayer.sources.common.CodecEnum.H265,
+            }
+        newPIDs = {}
+        for pid, codec in newval.items():
+            if codec in codecmap:
+                newPIDs[pid] = codecmap[codec]
+            else:
+                newPIDs[pid] = str(codec)+"?"
+        if self.pids != newPIDs:
+            self.pids = newPIDs
+            self.onChangeFire()
+            return True
+        else:
+           return False
+
+    def setFreq(self, newval):
+        if(isinstance(newval, int)):
+            if self.freq != newval:
+                self.freq = newval
+                self.onChangeFire()
+                return True
+            else:
+                return False
+        else:
+            return False
+
+    def getDVBVersion(self):
+        return self.dvbVersion
+
+    def getPIDs(self):
+        return self.pids
+
+    def getProvider(self):
+        return self.provider
+
+    def getService(self):
+        return self.service
+
+    def getFreq(self):
+        return self.freq
+
     def getSignalLevelMeta(self):
         return None
 
@@ -180,13 +265,49 @@ class sourceStatus(object):
         return None
 
     def getSignalSourceMeta(self):
-        return None
+        def processVal(newval):
+            return newval.getFreq()
+        return self.numericConfig("Hz",3, processVal)
 
     def getSignalBandwidthMeta(self):
         return None
 
+    def getModulation(self):
+        return self.modulation
+
+    def copyStatus(self):
+        newstatus = self.__class__()
+        newstatus.setStatusToMatch(self)
+        return newstatus
+
     def setStatusToMatch(self, fromStatus):
         changed = False
+        newMod = fromStatus.getModulation()
+        if self.modulation != newMod:
+            self.modulation = newMod
+            changed = True
+        newDVBversion = fromStatus.getDVBVersion()
+        if self.dvbVersion != newDVBversion:
+            self.dvbVersion = newDVBversion
+            changed = True
+        newPIDs = {}
+        for pid, codec in fromStatus.getPIDs().items():
+            newPIDs[pid] = codec
+        if self.pids != newPIDs:
+            self.pids = newPIDs
+            changed = True
+        newProvider = fromStatus.getProvider()
+        if self.provider != newProvider:
+            self.provider = newProvider
+            changed = True
+        newService = fromStatus.getService()
+        if self.service != newService:
+            self.service = newService
+            changed = True
+        newFreq = fromStatus.getFreq()
+        if self.freq != newFreq:
+            self.freq = newFreq
+            changed = True
         return changed
 
 class tunerBand(object):

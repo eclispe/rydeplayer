@@ -34,7 +34,7 @@ class DVBSVersionEnum(enum.Enum):
     DVBS = enum.auto()
     DVBS2 = enum.auto()
 
-class DVBSModulationEnum(enum.Enum):
+class DVBSModulationEnum(rydeplayer.sources.common.sourceModeEnum):
     S_1_2      = (enum.auto(), "DVB-S 1/2",          1.7)
     S_2_3      = (enum.auto(), "DVB-S 2/3",          3.3)
     S_3_4      = (enum.auto(), "DVB-S 3/4",          4.2)
@@ -73,43 +73,13 @@ class DVBSModulationEnum(enum.Enum):
     def __init__(self, enum, longName, threshold):
         self.longName = longName
         self.threshold = threshold
-    def __str__(self):
-        return self.longName
 
 # Container for tuner status data with change callbacks
 class tunerStatus(rydeplayer.sources.common.sourceStatus):
     def __init__(self):
         super().__init__()
         self.mer = None
-        self.provider = ""
-        self.service = ""
-        self.dvbVersion = None
-        self.modulation = None
-        self.pids = {}
-        self.freq = None
         self.sr = None
-
-    def setProvider(self, newval):
-        if(isinstance(newval, str)):
-            if self.provider != newval:
-                self.provider = newval
-                self.onChangeFire()
-                return True
-            else:
-                return False
-        else:
-            return False
-
-    def setService(self, newval):
-        if(isinstance(newval, str)):
-            if self.service != newval:
-                self.service = newval
-                self.onChangeFire()
-                return True
-            else:
-                return False
-        else:
-            return False
 
     def setMer(self, newval):
         if(isinstance(newval, float)):
@@ -204,41 +174,6 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
         else:
             return False
 
-    def setPIDs(self, newval):
-        codecmap = {
-             2:rydeplayer.sources.common.CodecEnum.MP2,
-             3:rydeplayer.sources.common.CodecEnum.MPA,
-             4:rydeplayer.sources.common.CodecEnum.MPA,
-            15:rydeplayer.sources.common.CodecEnum.AAC,
-            16:rydeplayer.sources.common.CodecEnum.H263,
-            27:rydeplayer.sources.common.CodecEnum.H264,
-            32:rydeplayer.sources.common.CodecEnum.MPA,
-            36:rydeplayer.sources.common.CodecEnum.H265,
-            }
-        newPIDs = {}
-        for pid, codec in newval.items():
-            if codec in codecmap:
-                newPIDs[pid] = codecmap[codec]
-            else:
-                newPIDs[pid] = str(codec)+"?"
-        if self.pids != newPIDs:
-            self.pids = newPIDs
-            self.onChangeFire()
-            return True
-        else:
-           return False
-
-    def setFreq(self, newval):
-        if(isinstance(newval, int)):
-            if self.freq != newval:
-                self.freq = newval
-                self.onChangeFire()
-                return True
-            else:
-                return False
-        else:
-            return False
-
     def setSR(self, newval):
         if(isinstance(newval, float)):
             if self.sr != newval:
@@ -252,24 +187,6 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
 
     def getMer(self):
         return self.mer
-
-    def getDVBVersion(self):
-        return self.dvbVersion
-
-    def getModulation(self):
-        return self.modulation
-
-    def getPIDs(self):
-        return self.pids
-
-    def getProvider(self):
-        return self.provider
-
-    def getService(self):
-        return self.service
-
-    def getFreq(self):
-        return self.freq
 
     def getSR(self):
         return self.sr
@@ -289,52 +206,16 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
                 return round(mer - mod.threshold,1)
         return self.meterConfig("db Margin","D", processVal)
 
-    def getSignalSourceMeta(self):
-        def processVal(newval):
-            return newval.getFreq()
-        return self.numericConfig("Hz",3, processVal)
-
     def getSignalBandwidthMeta(self):
         def processVal(newval):
             return newval.getSR()
         return self.numericConfig("S",3, processVal)
-
-    def copyStatus(self):
-        newstatus = self.__class__()
-        newstatus.setStatusToMatch(self)
-        return newstatus
 
     def setStatusToMatch(self, fromStatus):
         changed = super().setStatusToMatch(fromStatus)
         newMer = fromStatus.getMer()
         if self.mer != newMer:
             self.mer = newMer
-            changed = True
-        newMod = fromStatus.getModulation()
-        if self.modulation != newMod:
-            self.modulation = newMod
-            changed = True
-        newDVBversion = fromStatus.getDVBVersion()
-        if self.dvbVersion != newDVBversion:
-            self.dvbVersion = newDVBversion
-            changed = True
-        newPIDs = {}
-        for pid, codec in fromStatus.getPIDs().items():
-            newPIDs[pid] = codec
-        if self.pids != newPIDs:
-            self.pids = newPIDs
-            changed = True
-        newProvider = fromStatus.getProvider()
-        if self.provider != newProvider:
-            self.provider = newProvider
-            changed = True
-        newService = fromStatus.getService()
-        if self.service != newService:
-            self.service = newService
-            changed = True
-        newFreq = fromStatus.getFreq()
-        if self.freq != newFreq:
-            self.freq = newFreq
             changed = True
         newSR = fromStatus.getSR()
         if self.sr != newSR:
