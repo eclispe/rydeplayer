@@ -6,14 +6,22 @@ sources:
         mediapath: /home/pi/lmmedia
         statuspath: /home/pi/lmstatus
         tstimeout: 5000
+    COMBITUNER:
+        binpath: /home/pi/combituner/CombiTunerExpress
+        mediapath: /home/pi/ctmedia
 
 bands:
-    None:
+    None LM:
         source: LONGMYND
         lofreq: 0
         loside: SUM
         pol:  NONE
         port: BOTTOM
+        gpioid: 1
+    None CT: &bandnonect
+        source: COMBITUNER
+        lofreq: 0
+        loside: SUM
         gpioid: 1
     LNB Low: &bandlnblow
         source: LONGMYND
@@ -40,6 +48,11 @@ presets:
           - 333
           - 500
         band: *bandlnblow
+
+    70cm CT: &bandnonect
+        freq: 437000
+        bw:   333
+        band: *bandnonect
 
 default: *presetdefault
 

@@ -17,6 +17,7 @@
 import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys
 import rydeplayer.sources.common
 import rydeplayer.sources.longmynd
+import rydeplayer.sources.combituner
 from . import ir
 import rydeplayer.gpio
 import rydeplayer.network
@@ -529,7 +530,7 @@ class player(object):
         # setup on screen display
         self.osd = rydeplayer.osd.display.Controller(self.theme, self.config.osd, self.sourceMan.getStatus(), self, self.config.tuner)
 
-        debugFunctions = {'Restart LongMynd':self.sourceMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort}
+        debugFunctions = {'Restart Source':self.sourceMan.restart, 'Force VLC':self.vlcStop, 'Abort VLC': self.vlcAbort}
 
         # start ui
         self.app = guiState(self.theme, self.config.shutdownBehavior, self, self.osd)

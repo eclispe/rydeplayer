@@ -29,6 +29,7 @@ class sourceModeEnum(enum.Enum):
 
 class sources(enum.Enum):
     LONGMYND = enum.auto()
+    COMBITUNER = enum.auto()
 
     def getSource(self):
         thisSource = rydeplayer.sources.common.source.getSource(self)
@@ -143,7 +144,7 @@ class ftdiConfigs(enum.Enum):
     MINITIOUNER_PRO_TS2 = (enum.auto(), TUNER256[1] | frozenset([
         ('product', 'MiniTiouner_Pro_TS2'),
     ]), True)
-    KNUCKER = (enum.auto(), TUNER256[1] | frozenset([
+    COMBITUNER = (enum.auto(), TUNER256[1] | frozenset([
         ('product', 'CombiTuner-Express'),
     ]), True)
 
@@ -935,7 +936,7 @@ class sourceManagerThread(object):
         if self.sourceStatus is not None:
             newSourceStatus.addCallbacksFrom(self.sourceStatus)
         self.sourceStatus = newSourceStatus
-#        self.sourceMan = rydeplayer.sources.longmynd.lmManager(config, sourceConfigs[self.currentSource])
+
         self.sourceMan = self.currentSource.getSource().getManager()(config, self.sourceConfigs[self.currentSource])
         self.sourceMan.getStatus().addOnChangeCallback(self.statusCallbackThread)
         # trackers for the state in and out of the thread

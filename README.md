@@ -19,14 +19,18 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
 ### Config file options
 * ```configRev``` The config format revision of this file, if present but wrong the file will not load, if missing file will load with warning. Current revision is 2
 * ```sources``` This section contains the source specific confgs
-  * ```longmynd``` This section defines the paths and other settings for your Longmynd installation
+  * ```LONGMYND``` This section defines the paths and other settings for your Longmynd installation
     * ```binpath``` path to the Longmynd binary.
     * ```mediapath``` path to Longmynd's media FIFO, this will be auto-created if it doesn't exist.
     * ```statuspath``` path to Longmynd's status FIFO, this will be auto-created if it doesn't exist.
     * ```tstimeout``` TS timeout in ms, passed to longmynd with ```-r```, see longmynd manual for more details.
+  * ```COMBITUNER``` This section defines the paths and other settings for your CombiTuner installation
+    * ```binpath``` path to the CombiTuner binary.
+    * ```mediapath``` path to CombiTuner's media FIFO, this will be auto-created if it doesn't exist.
+
 * ```bands```
   * Name of the band, you may have to put it in double quotes ```"``` if you want to use names with various caracters such as ```:``` in it. It is recommended that you add an anchor if you need to reference the band later, e.g. ```"LNB Low": &bandlnblow```
-    * ```source``` The name of the signal source type, the other options in the band only apply for certain sources, see options below for details. Currently only supports ```LONGMYND```
+    * ```source``` The name of the signal source type, the other options in the band only apply for certain sources, see options below for details. Currently supports ```LONGMYND``` or ```COMBITUNER```
     * ```lofreq``` LO frequency value in kHz
     * ```loside``` Select either ```HIGH``` or ```LOW``` when using the difference mixing product where the LO is above or below the RF frequency respectively or ```SUM``` if using the sum mixing product.
     * ```pol``` Band polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```. Supported sources: ```LONGMYND```
@@ -37,6 +41,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
     * ```band``` Preset band, its recommended to use an alias to a band in the band library, e.g. ```band: *bandlnblow```
     * ```freq``` Preset frequency to tune, this can either be a single frequency or if using source ```LONGMYND``` a list of frequencies to enable frequency scanning
     * ```sr``` Preset symbol rate in kSps, this can either be a single symbol rate or a list of symbol rates to enable symbol rate scanning. Supported sources: ```LONGMYND```
+    * ```bw``` Preset bandwidth in kHz. Supported sources: ```COMBITUNER```
 
 * ```default```
   * Initial settings, its recommended to use an alias to a preset in the preset library, e.g. ```default: *presetdefault```
@@ -65,8 +70,8 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
       * ```y``` Same as for ```x``` but what fraction of the display height is the top/bottom (depending on datum).
       * ```w``` The width of the module as a fraction of the display height, valid values 0-1.
       * ```x``` Same as for ```w``` but for module height.
-    * ```SIGLEVEL``` Displays the MER of the current recived signal, size/location configuration the same as for ```MUTE```.
-    * ```REPORT``` Displays the difference between the MER and the minimal viable MER for the current modulation and FEC, size/location configuration the same as for ```MUTE```.
+    * ```SIGLEVEL``` Varies depending on source. For ```LONGMYND``` displays the MER of the current received signal. For ```COMBITUNER``` displays the SNR of the current received signal in dB. Size/location configuration the same as for ```MUTE```.
+    * ```REPORT``` Varies depending on source. For ```LONGMYND``` displays the difference between the MER and the minimal viable MER for the current modulation and FEC. For ```COMBITUNER``` displays the SQI as a percentage. Size/location configuration the same as for ```MUTE```.
     * ```PROGRAM``` Displays the service, provider, preset name, modulation type and transport stream PID details for the current signal, size/location configuration the same as for ```MUTE```.
   * ```inactive``` The same as the active list but for when the OSD is inactive.
 * ```network``` This section contains the network control configuration
