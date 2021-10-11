@@ -76,6 +76,7 @@ class CodecEnum(enum.Enum):
     H263 = (enum.auto(), "H.263")
     H264 = (enum.auto(), "H.264")
     H265 = (enum.auto(), "H.265")
+    AC3  = (enum.auto(), "AC3")
 
     def __init__(self, enum, longName):
         self.longName = longName
@@ -219,6 +220,7 @@ class sourceStatus(object):
             27:rydeplayer.sources.common.CodecEnum.H264,
             32:rydeplayer.sources.common.CodecEnum.MPA,
             36:rydeplayer.sources.common.CodecEnum.H265,
+            129:rydeplayer.sources.common.CodecEnum.AC3,
             }
         newPIDs = {}
         for pid, codec in newval.items():
