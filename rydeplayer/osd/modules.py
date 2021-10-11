@@ -211,7 +211,7 @@ class program(generic):
             drawAll = True
             self.surface.fill(self.theme.colours.backgroundMenu)
             # left box
-            contentboxleft = pygame.Rect((self.rect.height*0.15,self.rect.height*0.1),(((self.rect.width-(self.rect.height*0.5))/3)*2, self.rect.height*0.8)) # left content box
+            contentboxleft = pygame.Rect((self.rect.height*0.15,self.rect.height*0.1),((self.rect.width-(self.rect.height*0.5))*0.6, self.rect.height*0.8)) # left content box
             self.presetNameRect = pygame.Rect((contentboxleft.left, contentboxleft.top),(contentboxleft.width, contentboxleft.height/3))
             self.providerRect = pygame.Rect((contentboxleft.x, self.presetNameRect.bottom),(contentboxleft.width, contentboxleft.height/3))
             self.serviceRect = pygame.Rect((contentboxleft.x, self.providerRect.bottom),(contentboxleft.width, contentboxleft.height/3))
@@ -219,7 +219,7 @@ class program(generic):
             self.surface.fill(self.theme.colours.white, serviceDetailsBox)
             self.largeFont = pygame.font.SysFont('freesans', self.theme.fontSysSizeOptimizeHeight(contentboxleft.height/3, 'freesans')) # font for the large program details
             # right box
-            contentboxright = pygame.Rect((contentboxleft.right+self.rect.height*0.2,self.rect.height*0.1),((self.rect.width-(self.rect.height*0.5))/3, self.rect.height*0.8)) # right content box
+            contentboxright = pygame.Rect((contentboxleft.right+self.rect.height*0.2,self.rect.height*0.1),((self.rect.width-(self.rect.height*0.5))*0.4, self.rect.height*0.8)) # right content box
             self.modulationRect = pygame.Rect((contentboxright.x,contentboxright.top),(contentboxright.width, contentboxright.height/3))
             self.pidsRect = pygame.Rect((contentboxright.x,(contentboxright.height/3)+contentboxright.top),(contentboxright.width, (contentboxright.height/3)*2)) # 
             pidsColBox = pygame.Rect((self.pidsRect.x-self.rect.height*0.05,self.pidsRect.top),(self.pidsRect.width+self.rect.height*0.1, self.pidsRect.height)) # pids content box
