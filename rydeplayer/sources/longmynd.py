@@ -243,7 +243,7 @@ class lmManager(object):
             print("status pipe is not a fifo")
         self.vlcMediaFd =os.fdopen( os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK|os.O_RDONLY)) # an open file descriptor to pass to vlc (or another player)
 #        self.vlcMediaFd = None
-        self.statusFIFOfd = os.fdopen(os.open(self.statusFIFOfilename, flags=os.O_NONBLOCK|os.O_RDONLY)) # the status fifo file descriptor
+        self.statusFIFOfd = os.fdopen(os.open(self.statusFIFOfilename, flags=os.O_NONBLOCK|os.O_RDONLY), encoding="utf-8", errors="replace") # the status fifo file descriptor
         rpipe, self.stdoutWritefd = pty.openpty() # a pty for interacting with longmynds STDOUT, couldn't get pipes to work
         flags = fcntl.fcntl(rpipe, fcntl.F_GETFL)
         flags |= os.O_NONBLOCK
@@ -538,7 +538,7 @@ class lmManager(object):
         self.statusFIFOfd.close()
         #open a clean buffer ready for the restart
 
-        self.statusFIFOfd = os.fdopen(os.open(self.statusFIFOfilename, flags=os.O_NONBLOCK, mode=os.O_RDONLY))
+        self.statusFIFOfd = os.fdopen(os.open(self.statusFIFOfilename, flags=os.O_NONBLOCK, mode=os.O_RDONLY), encoding="utf-8", errors="replace")
         rpipe, self.stdoutWritefd = pty.openpty()
         flags = fcntl.fcntl(rpipe, fcntl.F_GETFL)
         flags |= os.O_NONBLOCK
