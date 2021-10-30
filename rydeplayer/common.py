@@ -26,6 +26,8 @@ class navEvent(enum.Enum):
     MENU   = (enum.auto(), 'MENU',   None)
     POWER  = (enum.auto(), 'POWER',  None)
     MUTE   = (enum.auto(), 'MUTE',   None)
+    VOLU   = (enum.auto(), 'VOL+',  None)
+    VOLD   = (enum.auto(), 'VOL-',  None)
     CHANU  = (enum.auto(), 'CHAN+',  None)
     CHAND  = (enum.auto(), 'CHAN-',  None)
     OSDOFF = (enum.auto(), 'OSDOFF', None)

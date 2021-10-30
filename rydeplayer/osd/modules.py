@@ -142,10 +142,22 @@ class report(meterDisplay):
         self.meterConfig = newval.getSignalReportMeta()
         super().updateVal(newval)
 
+# module that displays the current volume
+class volume(meterDisplay):
+    def __init__ (self, theme, drawCallback, rect, initVolume ):
+        super().__init__(theme, drawCallback, rect)
+        def processVal(newVal):
+            return newVal
+        self.value = initVolume
+        self.meterConfig = rydeplayer.sources.common.sourceStatus.meterConfig("% Vol", "", processVal)
+
+    def updateVal(self, newval):
+        super().updateVal(newval)
+
 # module that displays an icon when muted
 class mute(generic):
-    def __init__ (self, theme, drawCallback, rect):
-        self.mute = False
+    def __init__ (self, theme, drawCallback, rect, initMute):
+        self.mute = initMute
         self.origIcon = Image.open(theme.muteicon)
         self.iconSize = min(rect.size) # icon is sqauare, how long are its edges
         finalIcon = self.origIcon.resize((self.iconSize, self.iconSize), Image.ANTIALIAS)

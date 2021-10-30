@@ -109,6 +109,11 @@ network:
 
 shutdownBehavior: APPSTOP
 
+audio:
+    muteOnStartup: False
+    volumeOnStartup: 100
+    volumeStep: 25
+
 debug:
     enableMenu: False
     autoplay: True

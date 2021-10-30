@@ -162,10 +162,10 @@ class ftdiConfigs(enum.Enum):
         return self._canIdentify
 
 class sourceStatus(object):
+    numericConfig = collections.namedtuple('numericConfig', ["staticUnits", "unitMagnitude", "processValueFunc"])
+    meterConfig = collections.namedtuple('meterConfig', ["staticText", "prefixText", "processValueFunc"])
     def __init__(self):
         self.onChangeCallbacks = []
-        self.meterConfig = collections.namedtuple('meterConfig', ["staticText", "prefixText", "processValueFunc"])
-        self.numericConfig = collections.namedtuple('numericConfig', ["staticUnits", "unitMagnitude", "processValueFunc"])
         self.modulation = None
         self.provider = ""
         self.service = ""

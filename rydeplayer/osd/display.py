@@ -21,6 +21,7 @@ import enum, queue, socket, threading
 # Enum containing a list of all possible modules
 class AvailableModules(enum.Enum):
     MUTE = enum.auto()
+    VOLUME = enum.auto()
     SIGLEVEL = enum.auto()
     REPORT = enum.auto()
     PROGRAM = enum.auto()
@@ -205,8 +206,10 @@ class Controller(object):
         self.surface = pygame.image.frombuffer(self.dispmanxlayer, self.dispmanxlayer.size, 'RGBA')
         # Initialise modules
         self.modules = dict()
-        self.modules[AvailableModules.MUTE]=rydeplayer.osd.modules.mute(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.03, 0.1, 0.1))
+        self.modules[AvailableModules.MUTE]=rydeplayer.osd.modules.mute(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.03, 0.1, 0.1), self.player.getMute())
         self.player.addMuteCallback(self.modules[AvailableModules.MUTE].updateVal)
+        self.modules[AvailableModules.VOLUME]=rydeplayer.osd.modules.volume(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.25, 0.03, 0.2, 0.15), self.player.getVolume())
+        self.player.addVolumeCallback(self.modules[AvailableModules.VOLUME].updateVal)
         self.modules[AvailableModules.SIGLEVEL]=rydeplayer.osd.modules.sigLevel(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.15, 0.2, 0.15))
         self.sourceStatus.addOnChangeCallback(self.modules[AvailableModules.SIGLEVEL].updateVal)
         self.modules[AvailableModules.REPORT]=rydeplayer.osd.modules.report(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.32, 0.2, 0.15))

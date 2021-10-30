@@ -299,6 +299,12 @@ class guiState(rydeplayer.states.gui.SuperStates):
                 self.osd.toggle(2)
             elif(event == rydeplayer.common.navEvent.MUTE):
                 self.player.toggleMute()
+            elif(event == rydeplayer.common.navEvent.VOLU):
+                self.player.adjustVolumeByStep(True)
+                self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
+            elif(event == rydeplayer.common.navEvent.VOLD):
+                self.player.adjustVolumeByStep(False)
+                self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
             elif(event == rydeplayer.common.navEvent.CHANU):
                 self.player.switchPresetRelative(-1)
             elif(event == rydeplayer.common.navEvent.CHAND):
@@ -340,6 +346,11 @@ class rydeConfig(object):
         self.osd = rydeplayer.osd.display.Config(theme)
         self.network = rydeplayer.network.networkConfig()
         self.shutdownBehavior = rydeplayer.common.shutdownBehavior.APPSTOP
+        self.audio = type('audioConfig', (object,), {
+            'muteOnStartup': False,
+            'volumeOnStartup': 100,
+            'volumeStep': 25,
+            })
         self.debug = type('debugConfig', (object,), {
             'enableMenu': False,
             'autoplay': True,
@@ -461,6 +472,39 @@ class rydeConfig(object):
                 else:
                     print("Shutdown behavior default invalid, skipping")
                     perfectConfig = False
+            # parse audio options
+            if 'audio' in config:
+                if isinstance(config['audio'], dict):
+                    if 'muteOnStartup' in config['audio']:
+                        if isinstance(config['audio']['muteOnStartup'], bool):
+                            self.audio.muteOnStartup = config['audio']['muteOnStartup']
+                        else:
+                            print("Invalid mute on startup config, skipping")
+                            perfectConfig = False
+                    if 'volumeOnStartup' in config['audio']:
+                        if isinstance(config['audio']['volumeOnStartup'], int):
+                            if config['audio']['volumeOnStartup'] <= 100 and config['audio']['volumeOnStartup'] >= 0:
+
+                                self.audio.volumeOnStartup = config['audio']['volumeOnStartup']
+                            else:
+                                print("Invalid startup volume config, out of range, skipping")
+                                perfectConfig = False
+
+                        else:
+                            print("Invalid startup volume config, skipping")
+                            perfectConfig = False
+                    if 'volumeStep' in config['audio']:
+                        if isinstance(config['audio']['volumeStep'], int):
+                            if config['audio']['volumeStep'] <= 100 and config['audio']['volumeStep'] >= 0:
+
+                                self.audio.volumeStep = config['audio']['volumeStep']
+                            else:
+                                print("Invalid volume step config, out of range, skipping")
+                                perfectConfig = False
+
+                        else:
+                            print("Invalid volume step config, skipping")
+                            perfectConfig = False
 
             # parse debug options
             if 'debug' in config:
@@ -520,8 +564,12 @@ class player(object):
         print(self.config.tuner)
 
         # mute
-        self.mute = False
+        self.mute = self.config.audio.muteOnStartup
         self.muteCallbacks = []
+
+        # volume
+        self.volume = self.config.audio.volumeOnStartup
+        self.volumeCallbacks = []
 
         # setup source 
         self.sourceMan = rydeplayer.sources.common.sourceManagerThread(self.config.tuner, self.config.sourceConfigs)
@@ -579,8 +627,40 @@ class player(object):
             for callback in self.muteCallbacks:
                 callback(newMute)
 
+    def getMute(self):
+        return self.mute
+
     def toggleMute(self):
         self.setMute(not self.mute)
+
+    def addVolumeCallback(self, callback):
+        self.volumeCallbacks.append(callback)
+
+    def removeVolumeCallback(self, callback):
+        self.volumeCallbacks.remove(callback)
+
+    def setVolume(self,newVolume):
+        if newVolume > 100:
+            newVolume = 100
+        elif newVolume < 0:
+            newVolume = 0
+        if self.volume != newVolume:
+            self.volume = newVolume
+            self.vlcPlayer.audio_set_volume(newVolume)
+            for callback in self.volumeCallbacks:
+                callback(newVolume)
+
+    def getVolume(self):
+        return self.volume
+
+    def adjustVolume(self, volumeAdjustment):
+        self.setVolume(self.volume + volumeAdjustment)
+
+    def adjustVolumeByStep(self, up):
+        if up:
+            self.adjustVolume(self.config.audio.volumeStep)
+        else:
+            self.adjustVolume(-self.config.audio.volumeStep)
 
     def getPresetName(self, preset):
         if preset in self.config.presets:
