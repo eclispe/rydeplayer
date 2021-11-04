@@ -30,6 +30,7 @@ class gpioConfig(object):
         self.pinSwitchLowMap = {} # map of pin numbers to low going event names for switches
         self.pinSwitchHighMap = {} # map of pin numbers to high going event names for switches
         self.rxGoodPin = None # pin to output the RX good signal on
+        self.bandPins = [] # pins to output the band ID
         self.repeatFirst=200 # how long to wait before starting to repeat
         self.repeatDelay=100 # while repeating how long between repeats
         self.inconfig=None
@@ -72,23 +73,55 @@ class gpioConfig(object):
                 if isinstance(config['rxGood'], int):
                     if config['rxGood'] != self.irpin: # make sure we aren't trying to use the ir pin
                         if config['rxGood'] not in self.pinButtonMap: # can't use the pin if its already a button
-                           self.rxGoodPin = config['rxGood']
+                            if config['rxGood'] not in self.bandPins: # can't use the pin if its already used for the band output
+                                self.rxGoodPin = config['rxGood']
+                            else:
+                                print("RX pin is already being used for band output, check config")
+                                perfectConfig = False
                         else:
                             print("RX pin is already being used for a button, check config")
+                            perfectConfig = False
                     else:
                         print("RX pin can't use the IR pin, check config")
                         perfectConfig = False
                 else:
                     print("RX good pin provided but not an int, skipping")
                     perfectConfig = False
+            if 'band' in config:
+                if isinstance(config['band'], list):
+                    for pin in config['band']:
+                        if isinstance(pin, int):
+                            if pin != self.irpin: # can't use the IR pin
+                                if pin != self.rxGoodPin: # can't use this pin as its already being used for RX good
+                                    if pin not in self.pinButtonMap: # can't use a pin already in use for a button
+                                        self.bandPins.append(pin)
+                                    else:
+                                        print("Band output pin is already being use for a button, abourting further band pins")
+                                        perfectConfig = False
+                                        break
+                                else:
+                                    print("Band output pin is already being used as RX good pin, aborting further band pins")
+                                    perfectConfig = False
+                                    break
+                            else:
+                                print("Band output pin can't use the IR pin, aborting further band pins")
+                                perfectConfig = False
+                                break
+                        else:
+                            print("Band output pin not an int, aboring further band pins")
+                            perfectConfig = False
+                            break
+                else:
+                    print("Band output pins provided but not a list, skipping")
+                    perfectConfig = False
             if 'buttons' in config: # load gpio button map
-                perfectConfig = perfectConfig and self.loadPinMap(config['buttons'], self.pinButtonMap, [self.irpin, self.rxGoodPin])
+                perfectConfig = perfectConfig and self.loadPinMap(config['buttons'], self.pinButtonMap, [self.irpin, self.rxGoodPin]+self.bandPins)
             if 'switches' in config: # load gpio switch map
                 if isinstance(config['switches'], dict):
                     if 'highgoing' in config['switches']:
-                        perfectConfig = perfectConfig and self.loadPinMap(config['switches']['highgoing'], self.pinSwitchHighMap, [self.irpin, self.rxGoodPin])
+                        perfectConfig = perfectConfig and self.loadPinMap(config['switches']['highgoing'], self.pinSwitchHighMap, [self.irpin, self.rxGoodPin]+self.bandPins)
                     if 'lowgoing' in config['switches']:
-                        perfectConfig = perfectConfig and self.loadPinMap(config['switches']['lowgoing'], self.pinSwitchLowMap, [self.irpin, self.rxGoodPin])
+                        perfectConfig = perfectConfig and self.loadPinMap(config['switches']['lowgoing'], self.pinSwitchLowMap, [self.irpin, self.rxGoodPin]+self.bandPins)
             if 'repeatFirst' in config:
                 if isinstance(config['repeatFirst'] , int):
                     self.repeatFirst = config['repeatFirst']
@@ -107,7 +140,7 @@ class gpioConfig(object):
         return perfectConfig
 
 class gpioManager(object):
-    def __init__(self, eventCallback, config):
+    def __init__(self, eventCallback, config, initialPreset):
         debounce = 0.01
         self.eventCallback = eventCallback
         self.config = config
@@ -129,9 +162,19 @@ class gpioManager(object):
             self.buttons[pin] = thisbutton
 
         self.rxGoodLED = None
+
         # create a gpio LED object for the status light if there is a pin defined
         if self.config.rxGoodPin is not None:
             self.rxGoodLED = gpiozero.LED(self.config.rxGoodPin)
+
+        # create a list of gpio LED objects for the band bits
+
+        self.bandPins = []
+        for pin in self.config.bandPins:
+            self.bandPins.append(gpiozero.LED(pin))
+
+        self.gpioID = None
+        self.setBandOutFromPreset(initialPreset)
 
         # socket to notify the main loop of a button press
         self.recvSock, self.sendSock = socket.socketpair()
@@ -194,3 +237,19 @@ class gpioManager(object):
                 self.rxGoodLED.on()
             else:
                 self.rxGoodLED.off()
+
+    # sets band pins from the band in a preset
+    def setBandOutFromPreset(self, newState):
+        self.setBandOut(newState.getBand().getGPIOid())
+
+    def setBandOut(self, newGPIOid):
+        if newGPIOid != self.gpioID:
+            self.gpioID = newGPIOid
+            print("GPIO id: "+str(newGPIOid))
+            for bit, pin in enumerate(self.bandPins):
+                # bitwise bit extraction: shift by index, bitwise 'and' with 1 to throw away everything else
+                bitVal = bool((newGPIOid >> bit) & 1)
+                if bitVal:
+                    pin.on()
+                else:
+                    pin.off()

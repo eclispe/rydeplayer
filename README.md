@@ -59,6 +59,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * ```switches``` Container for switch event to BCM pin number mappings.
     * ```highgoing``` A map of high going events to BCM pin numbers.
     * ```lowgoing``` A map of low going events to BCM pin numbers.
+  * ```band``` A list of BCM pin numbers to use to output band ID, starting with LSB
 * ```osd``` This section contains the configuration for the on screen display
   * ```timers``` Contains deactiate timers for various triggers in seconds, ```0``` disables the initial event, ```null``` disables the auto deactivate
     * ```USERTRIGGER``` Activate triggered by user pressing select button

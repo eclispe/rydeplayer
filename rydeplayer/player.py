@@ -593,7 +593,8 @@ class player(object):
         self.irMan = ir.irManager(self.stepSM, self.config.ir)
 
         # setup gpio
-        self.gpioMan = rydeplayer.gpio.gpioManager(self.stepSM, self.config.gpio)
+        self.gpioMan = rydeplayer.gpio.gpioManager(self.stepSM, self.config.gpio, self.config.tuner)
+        self.config.tuner.addCallbackFunction(self.gpioMan.setBandOutFromPreset)
 
         # start source
         self.sourceMan.start()

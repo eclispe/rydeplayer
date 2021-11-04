@@ -83,6 +83,10 @@ gpio:
             OSDON: 26
         lowgoing:
             OSDOFF: 26
+    band:
+        - 12
+        - 13
+        - 15
 
 osd:
     timers:
