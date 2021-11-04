@@ -741,6 +741,7 @@ class player(object):
 #               print("parsed:"+str(vlcMedia.is_parsed()))
             self.gpioMan.setRXgood(False)
         self.vlcPlayer.audio_set_mute(self.mute)
+        self.vlcPlayer.audio_set_volume(self.volume)
         print(self.vlcPlayer.get_state())
 
     # Step the state machine with a navEvent
