@@ -553,8 +553,12 @@ class rydeConfig(object):
 class player(object):
 
     def __init__(self, configFile = None):
+        # Autodetect output display
         if(len(pydispmanx.getDisplays())<1):
             raise RuntimeError('No displays detected')
+        else:
+            self.displayId = pydispmanx.getDisplays()[0]
+
         # setup ui core
         pygame.init()
         self.theme = Theme(pydispmanx.getDisplaySize())
@@ -778,6 +782,9 @@ class player(object):
         vlcArgs += '--width '+str(displaySize[0])+' --height '+str(displaySize[1])+' '
         displayPAR = pydispmanx.getPixelAspectRatio()
         vlcArgs += '--monitor-par '+str(displayPAR[0])+':'+str(displayPAR[1])+' '
+        # vlc needs manually telling if using the second HDMI
+        if self.displayId == 7:
+            vlcArgs += '--mmal-display hdmi-2 '
         if self.config.debug.disableHardwareCodec:
             vlcArgs += '--codec ffmpeg '
 #        vlcArgs += '--gain 4 --alsa-audio-device hw:CARD=Headphones,DEV=0 '
