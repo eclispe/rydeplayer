@@ -553,6 +553,8 @@ class rydeConfig(object):
 class player(object):
 
     def __init__(self, configFile = None):
+        if(len(pydispmanx.getDisplays())<1):
+            raise RuntimeError('No displays detected')
         # setup ui core
         pygame.init()
         self.theme = Theme(pydispmanx.getDisplaySize())
