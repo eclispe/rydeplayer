@@ -261,6 +261,9 @@ class sourceStatus(object):
     def getFreq(self):
         return self.freq
 
+    def getPowerLevelMeta(self):
+        return None
+
     def getSignalLevelMeta(self):
         return None
 

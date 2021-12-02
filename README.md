@@ -74,6 +74,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
     * ```VOLUME``` Displays the currently set output volume.
     * ```SIGLEVEL``` Varies depending on source. For ```LONGMYND``` displays the MER of the current received signal. For ```COMBITUNER``` displays the SNR of the current received signal in dB. Size/location configuration the same as for ```MUTE```.
     * ```REPORT``` Varies depending on source. For ```LONGMYND``` displays the difference between the MER and the minimal viable MER for the current modulation and FEC. For ```COMBITUNER``` displays the SQI as a percentage. Size/location configuration the same as for ```MUTE```.
+    * ```POWERLEVEL``` Only works with ```LONGMYND```. It displays an approximate imput signal strength in dBm. Indicated power should be between -70 and -65dBm with no advantage seen for higer power. Size/location configuration the same as for ```MUTE```.
     * ```PROGRAM``` Displays the service, provider, preset name, modulation type and transport stream PID details for the current signal, size/location configuration the same as for ```MUTE```.
     * ```FREQ``` Varies slightly depending on source. For ```LONGMYND``` displays the actual frequency that is being received. For ```COMBITUNER``` displays the requested freqency only as reported by combituner.
     * ```BW``` Varies slightly depending on source. For ```LONGMYND``` displays the actual symbol rate that is being received in kSps. For ```COMBITUNER``` displays the requested bandwidth only as reported by combituner.

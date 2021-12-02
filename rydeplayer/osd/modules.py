@@ -128,6 +128,13 @@ class meterDisplay(generic):
             self.vale = None
         self.redraw()
 
+# module that displays the current power level
+class powerLevel(meterDisplay):
+
+    def updateVal(self, newval):
+        self.meterConfig = newval.getPowerLevelMeta()
+        super().updateVal(newval)
+
 # module that displays the current signal level
 class sigLevel(meterDisplay):
 

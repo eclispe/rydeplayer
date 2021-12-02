@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import enum, os, stat, subprocess, pty, select, copy, fcntl, collections, time, socket, queue, threading
+import enum, os, stat, subprocess, pty, select, copy, fcntl, collections, time, socket, queue, threading, bisect
 import rydeplayer.common
 import rydeplayer.sources.common
 import pyftdi.ftdi
@@ -80,6 +80,9 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
         super().__init__()
         self.mer = None
         self.sr = None
+        self.agc1 = None
+        self.agc2 = None
+        self.powerInd = None
 
     def setMer(self, newval):
         if(isinstance(newval, float)):
@@ -185,11 +188,133 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
         else:
             return False
 
+    def updatePowerInd(self):
+        agc1Lookup = collections.OrderedDict()
+        agc1Lookup[1] = -70
+        agc1Lookup[10] = -69
+        agc1Lookup[21800] = -68
+        agc1Lookup[25100] = -67
+        agc1Lookup[27100] = -66
+        agc1Lookup[28100] = -65
+        agc1Lookup[28900] = -64
+        agc1Lookup[29600] = -63
+        agc1Lookup[30100] = -62
+        agc1Lookup[30550] = -61
+        agc1Lookup[31000] = -60
+        agc1Lookup[31350] = -59
+        agc1Lookup[31700] = -58
+        agc1Lookup[32050] = -57
+        agc1Lookup[32400] = -56
+        agc1Lookup[32700] = -55
+        agc1Lookup[33000] = -54
+        agc1Lookup[33300] = -53
+        agc1Lookup[33600] = -52
+        agc1Lookup[33900] = -51
+        agc1Lookup[34200] = -50
+        agc1Lookup[34500] = -49
+        agc1Lookup[34750] = -48
+        agc1Lookup[35000] = -47
+        agc1Lookup[35250] = -46
+        agc1Lookup[35500] = -45
+        agc1Lookup[35750] = -44
+        agc1Lookup[36000] = -43
+        agc1Lookup[36200] = -42
+        agc1Lookup[36400] = -41
+        agc1Lookup[36600] = -40
+        agc1Lookup[36800] = -39
+        agc1Lookup[37000] = -38
+        agc1Lookup[37200] = -37
+        agc1Lookup[37400] = -36
+        agc1Lookup[37600] = -35
+        agc1Lookup[37700] = -35
+
+        agc2Lookup = collections.OrderedDict()
+        agc2Lookup[182] = -71
+        agc2Lookup[200] = -72
+        agc2Lookup[225] = -73
+        agc2Lookup[255] = -74
+        agc2Lookup[290] = -75
+        agc2Lookup[325] = -76
+        agc2Lookup[360] = -77
+        agc2Lookup[400] = -78
+        agc2Lookup[450] = -79
+        agc2Lookup[500] = -80
+        agc2Lookup[560] = -81
+        agc2Lookup[625] = -82
+        agc2Lookup[700] = -83
+        agc2Lookup[780] = -84
+        agc2Lookup[880] = -85
+        agc2Lookup[1000] = -86
+        agc2Lookup[1140] = -87
+        agc2Lookup[1300] = -88
+        agc2Lookup[1480] = -89
+        agc2Lookup[1660] = -90
+        agc2Lookup[1840] = -91
+        agc2Lookup[2020] = -92
+        agc2Lookup[2200] = -93
+        agc2Lookup[2380] = -94
+        agc2Lookup[2560] = -95
+        agc2Lookup[2740] = -96
+        agc2Lookup[3200] = -97
+
+        if self.agc1 is None or self.agc2 is None:
+            newpwr = None
+        else:
+            if self.agc1 > 0:
+                lookupDict = agc1Lookup
+                lookupVal = self.agc1
+            else:
+                lookupDict = agc2Lookup
+                lookupVal = self.agc2
+            agcKeys = list(lookupDict.keys())
+            # find where it would be inserted if it was a list
+            agcIndex = bisect.bisect_left(agcKeys,lookupVal)
+            # check if n or n-1 is closer
+            if abs(agcKeys[agcIndex]-lookupVal) >= abs(agcKeys[agcIndex-1]-lookupVal):
+                closestKey = agcKeys[agcIndex - 1]
+            else:
+                closestKey = agcKeys[agcIndex]
+            newpwr = lookupDict[closestKey]
+        if self.powerInd != newpwr:
+            self.powerInd = newpwr
+            self.onChangeFire()
+            return True
+        else:
+            return False
+
+    def setAGC1(self, newval):
+        if(isinstance(newval, int)):
+            if self.agc1 != newval:
+                self.agc1 = newval
+                return self.updatePowerInd()
+            else:
+                return False
+        else:
+            return False
+
+    def setAGC2(self, newval):
+        if(isinstance(newval, int)):
+            if self.agc2 != newval:
+                self.agc2 = newval
+                return self.updatePowerInd()
+            else:
+                return False
+        else:
+            return False
+
     def getMer(self):
         return self.mer
 
     def getSR(self):
         return self.sr
+
+    def getPowerInd(self):
+        return self.powerInd
+
+    def getPowerLevelMeta(self):
+        def processVal(newval):
+            return newval.getPowerInd()
+        return self.meterConfig("dBm Power","", processVal)
 
     def getSignalLevelMeta(self):
         def processVal(newval):
@@ -220,6 +345,10 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
         newSR = fromStatus.getSR()
         if self.sr != newSR:
             self.sr = newSR
+            changed = True
+        newPowerInd = fromStatus.getPowerInd()
+        if self.powerInd != newPowerInd:
+            self.powerInd = newPowerInd
             changed = True
         if changed:
             self.onChangeFire()
@@ -372,6 +501,10 @@ class lmManager(object):
                 elif msgtype == 18:
                     self.tunerStatus.setModcode(int(rawval))
                     self.lastState['modcode'] = int(rawval)
+                elif msgtype == 26:
+                    self.tunerStatus.setAGC1(int(rawval))
+                elif msgtype == 27:
+                    self.tunerStatus.setAGC2(int(rawval))
 
                 # PID list accumulator
                 if msgtype == 16: # ES PID

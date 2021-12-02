@@ -102,6 +102,7 @@ osd:
         VOLUME: null
         SIGLEVEL: null
         REPORT: null
+        POWERLEVEL: null
         PROGRAM: null
         FREQ: null
         BW: null
