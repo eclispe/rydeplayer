@@ -269,8 +269,12 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
             agcKeys = list(lookupDict.keys())
             # find where it would be inserted if it was a list
             agcIndex = bisect.bisect_left(agcKeys,lookupVal)
-            # check if n or n-1 is closer
-            if abs(agcKeys[agcIndex]-lookupVal) >= abs(agcKeys[agcIndex-1]-lookupVal):
+
+            if agcIndex >= len(agcKeys): # bigger than list use max value
+                closestKey = agcKeys[-1]
+            elif agcIndex <= 0: # smaller than list use min value
+                closestKey = agcKeys[0]
+            elif abs(agcKeys[agcIndex]-lookupVal) >= abs(agcKeys[agcIndex-1]-lookupVal): # check if n or n-1 is closer
                 closestKey = agcKeys[agcIndex - 1]
             else:
                 closestKey = agcKeys[agcIndex]
