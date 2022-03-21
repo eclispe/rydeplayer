@@ -894,6 +894,7 @@ class eventsToThread(enum.Enum):
 class eventsFromThread(enum.Enum):
     NEWFULLSTATUS = enum.auto()
     NEWCORESTATE = enum.auto()
+    NEWMEDIAFD = enum.auto()
 
 # threaded wrapper around source
 class sourceManagerThread(object):
@@ -921,6 +922,9 @@ class sourceManagerThread(object):
         self.sourceMan.getStatus().addOnChangeCallback(self.statusCallbackThread)
         # trackers for the state in and out of the thread
         self.coreStateThread = self.sourceMan.getCoreState()
+        # setup intial media file descriptors
+        self.mediaFdCacheThread = self.sourceMan.getMediaFd()
+        self.mediaFdCacheMain = self.mediaFdCacheThread
         # create and start thread
         self.thread = threading.Thread(target=self.threadLoop, daemon=True)
         self.sourceStatus.onChangeFire()
@@ -940,7 +944,7 @@ class sourceManagerThread(object):
         self.sourceMan.remedia()
 
     def getMediaFd(self):
-        return self.sourceMan.getMediaFd()
+        return self.mediaFdCacheMain
     def getMainFDs(self):
         return [self.fromRecvSock]
     def getThreadFDs(self):
@@ -964,6 +968,8 @@ class sourceManagerThread(object):
                 newStatus = queueArg
             elif queueCommand == eventsFromThread.NEWCORESTATE:
                 self.coreStateMain = queueArg
+            elif queueCommand == eventsFromThread.NEWMEDIAFD:
+                self.mediaFdCacheMain = queueArg
         if newStatus is not None:
             self.sourceStatus.setStatusToMatch(newStatus)
 
@@ -1031,4 +1037,9 @@ class sourceManagerThread(object):
             if newCoreState != self.coreStateThread:
                 self.coreStateThread = newCoreState
                 self.fromEventQueue.put((eventsFromThread.NEWCORESTATE, newCoreState))
+                self.fromSendSock.send(b"\x00")
+            newMediaFd = self.sourceMan.getMediaFd()
+            if newMediaFd != self.mediaFdCacheThread:
+                self.mediaFdCacheThread = newMediaFd
+                self.fromEventQueue.put((eventsFromThread.NEWMEDIAFD, newMediaFd))
                 self.fromSendSock.send(b"\x00")

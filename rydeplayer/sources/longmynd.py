@@ -399,7 +399,7 @@ class lmManager(object):
             os.mkfifo(self.statusFIFOfilename)
         elif(not stat.S_ISFIFO(os.stat(self.statusFIFOfilename).st_mode)):
             print("status pipe is not a fifo")
-        self.vlcMediaFd =os.fdopen( os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK|os.O_RDONLY)) # an open file descriptor to pass to vlc (or another player)
+        self.vlcMediaFd =os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK|os.O_RDONLY) # an open file descriptor to pass to vlc (or another player)
 #        self.vlcMediaFd = None
         self.statusFIFOfd = os.fdopen(os.open(self.statusFIFOfilename, flags=os.O_NONBLOCK|os.O_RDONLY), encoding="utf-8", errors="replace") # the status fifo file descriptor
         rpipe, self.stdoutWritefd = pty.openpty() # a pty for interacting with longmynds STDOUT, couldn't get pipes to work
@@ -437,8 +437,8 @@ class lmManager(object):
             print(self.activeConfig)
             self.restart()
     def remedia(self):
-        self.vlcMediaFd.close()
-        self.vlcMediaFd =os.fdopen( os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK, mode=os.O_RDONLY)) # an open file descriptor to pass to vlc (or another player)
+        os.close(self.vlcMediaFd)
+        self.vlcMediaFd = os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK, mode=os.O_RDONLY) # an open file descriptor to pass to vlc (or another player)
     def getMediaFd(self):
         return self.vlcMediaFd
     def getFDs(self):
@@ -724,7 +724,7 @@ class lmManager(object):
             self.lmlog.append(newline)
         self.stdoutReadfd.close()
         self.statusFIFOfd.close()
-        self.vlcMediaFd.close()
+        os.close(self.vlcMediaFd)
 
     def _fetchFtdiDevices(self):
         pyftdi.usbtools.UsbTools.flush_cache()

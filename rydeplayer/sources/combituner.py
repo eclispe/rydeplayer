@@ -287,7 +287,7 @@ class combiTunerManager(object):
             print("made")
         elif(not stat.S_ISFIFO(os.stat(self.mediaFIFOfilename).st_mode)):
             print("media pipe is not a fifo")
-        self.vlcMediaFd =os.fdopen( os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK|os.O_RDONLY)) # an open file descriptor to pass to vlc (or another player)
+        self.vlcMediaFd = os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK|os.O_RDONLY) # an open file descriptor to pass to vlc (or another player)
         rpipe, self.stdoutWritefd = pty.openpty() # a pty for interacting with combituners STDOUT, couldn't get pipes to work
         flags = fcntl.fcntl(rpipe, fcntl.F_GETFL)
         flags |= os.O_NONBLOCK
@@ -313,8 +313,8 @@ class combiTunerManager(object):
             print(self.activeConfig)
             self.restart()
     def remedia(self):
-        self.vlcMediaFd.close()
-        self.vlcMediaFd =os.fdopen( os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK, mode=os.O_RDONLY)) # an open file descriptor to pass to vlc (or another player)
+        os.close(self.vlcMediaFd)
+        self.vlcMediaFd = os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK, mode=os.O_RDONLY) # an open file descriptor to pass to vlc (or another player)
     def getMediaFd(self):
         return self.vlcMediaFd
     def getFDs(self):
@@ -538,7 +538,7 @@ class combiTunerManager(object):
             newline = rawnewline.rstrip()
             self.ctlog.append(newline)
         self.stdoutReadfd.close()
-        self.vlcMediaFd.close()
+        os.close(self.vlcMediaFd)
 
     def _fetchFtdiDevices(self):
         pyftdi.usbtools.UsbTools.flush_cache()

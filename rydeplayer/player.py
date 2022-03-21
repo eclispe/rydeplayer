@@ -763,6 +763,12 @@ class player(object):
 
     # retrigger vlc to play, mostly exsists as its needed as a callback
     def vlcPlay(self):
+        newMediaFD = self.sourceMan.getMediaFd()
+        if newMediaFD != self.vlcMediaFD:
+            self.vlcPlayer.stop()
+            self.vlcMediaFD = newMediaFD
+            del(self.vlcMedia)
+            self.vlcMedia = self.vlcInstance.media_new_fd(self.vlcMediaFD)
         self.vlcPlayer.set_media(self.vlcMedia)
         self.vlcPlayer.play()
     def vlcStop(self):
@@ -792,7 +798,8 @@ class player(object):
         self.vlcInstance = vlc.Instance(vlcArgs)
 
         self.vlcPlayer = self.vlcInstance.media_player_new()
-        self.vlcMedia = self.vlcInstance.media_new_fd(self.sourceMan.getMediaFd().fileno())
+        self.vlcMediaFD = self.sourceMan.getMediaFd()
+        self.vlcMedia = self.vlcInstance.media_new_fd(self.vlcMediaFD)
 
 def run():
     parser = argparse.ArgumentParser()
