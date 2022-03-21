@@ -306,6 +306,31 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
         else:
             return False
 
+    def setPIDs(self, newval):
+        codecmap = {
+             2:rydeplayer.sources.common.CodecEnum.MP2,
+             3:rydeplayer.sources.common.CodecEnum.MP3,
+             4:rydeplayer.sources.common.CodecEnum.MP3,
+            15:rydeplayer.sources.common.CodecEnum.AAC,
+            16:rydeplayer.sources.common.CodecEnum.H263,
+            27:rydeplayer.sources.common.CodecEnum.H264,
+            32:rydeplayer.sources.common.CodecEnum.MPA,
+            36:rydeplayer.sources.common.CodecEnum.H265,
+            129:rydeplayer.sources.common.CodecEnum.AC3,
+            }
+        newPIDs = {}
+        for pid, codec in newval.items():
+            if codec in codecmap:
+                newPIDs[pid] = codecmap[codec]
+            else:
+                newPIDs[pid] = str(codec)+"?"
+        if self.pids != newPIDs:
+            self.pids = newPIDs
+            self.onChangeFire()
+            return True
+        else:
+           return False
+
     def getMer(self):
         return self.mer
 
