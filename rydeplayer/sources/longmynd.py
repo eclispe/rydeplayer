@@ -835,7 +835,7 @@ class config(object):
             perfectConfig = False
         return perfectConfig
 
-class band(rydeplayer.sources.common.tunerBand):
+class band(rydeplayer.sources.common.tunerBandRF):
     def __init__(self):
         self.source = rydeplayer.sources.common.sources.LONGMYND
         self.pol = PolarityEnum.NONE
@@ -855,8 +855,8 @@ class band(rydeplayer.sources.common.tunerBand):
     @classmethod
     def loadBand(cls, config):
         perfectConfig = True
-        # create a new instance of this class
-        self = cls()
+        subClassSuccess, self = super(band, cls).loadBand(config)
+        perfectConfig = perfectConfig and subClassSuccess
         if 'pol' in config:
             if isinstance(config['pol'], str):
                 polset = False

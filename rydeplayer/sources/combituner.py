@@ -620,7 +620,7 @@ class config(object):
             perfectConfig = False
         return perfectConfig
 
-class band(rydeplayer.sources.common.tunerBand):
+class band(rydeplayer.sources.common.tunerBandRF):
     def __init__(self):
         self.source = rydeplayer.sources.common.sources.COMBITUNER
         super().__init__()
@@ -637,8 +637,8 @@ class band(rydeplayer.sources.common.tunerBand):
     @classmethod
     def loadBand(cls, config):
         perfectConfig = True
-        # create a new instance of this class
-        self = cls()
+        subClassSuccess, self = super(band, cls).loadBand(config)
+        perfectConfig = perfectConfig and subClassSuccess
         return (perfectConfig, self)
 
     # takes a current set of vars and adjusts them to be compatible with this sub band
