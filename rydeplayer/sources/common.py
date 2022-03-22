@@ -71,10 +71,11 @@ class LOOffsetSideEnum(enum.Enum):
 
 class CodecEnum(enum.Enum):
     MP2  = (enum.auto(), "MPEG-2")
-    MPA  = (enum.auto(), "MPA")
+    MP3  = (enum.auto(), "MP3")
     AAC  = (enum.auto(), "AAC")
     H263 = (enum.auto(), "H.263")
     H264 = (enum.auto(), "H.264")
+    MPA  = (enum.auto(), "MPA")
     H265 = (enum.auto(), "H.265")
     AC3  = (enum.auto(), "AC3")
 
