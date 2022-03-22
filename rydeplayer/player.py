@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys
+import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys, socket
 import rydeplayer.sources.common
 import rydeplayer.sources.longmynd
 import rydeplayer.sources.combituner
@@ -583,7 +583,10 @@ class player(object):
         self.sourceMan = rydeplayer.sources.common.sourceManagerThread(self.config.tuner, self.config.sourceConfigs)
         self.config.tuner.addCallbackFunction(self.sourceMan.reconfig)
 
+        # setup vlc
+        self.recvVLCEvent, self.sendVLCEvent = socket.socketpair()
         self.vlcStartup()
+        self.config.tuner.addCallbackFunction(self.vlcStopOnRetune)
 
         # setup on screen display
         self.osd = rydeplayer.osd.display.Controller(self.theme, self.config.osd, self.sourceMan.getStatus(), self, self.config.tuner)
@@ -614,7 +617,7 @@ class player(object):
         # main event loop
         while not quit:
             # need to regen every loop, lm stdout handler changes on lm restart
-            fds = self.irMan.getFDs() + self.sourceMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs()
+            fds = self.irMan.getFDs() + self.sourceMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs() + [self.recvVLCEvent]
             r, w, x = select.select(fds, [], [])
             for fd in r:
                 quit = self.handleEvent(fd)
@@ -716,11 +719,14 @@ class player(object):
             quit = self.osd.handleFD(fd)
         elif(fd in self.netMan.getFDs()):
             quit = self.netMan.handleFD(fd)
+        elif(fd == self.recvVLCEvent):
+            self.vlcStopOnEndMain()
         return quit
 
     def updateState(self):
         # update playback state
         state = self.sourceMan.getCoreState()
+        vlcState = self.vlcPlayer.get_state()
         if(state.isRunning):
             if(state.isLocked):
                 self.playbackState.setState(rydeplayer.states.playback.States.LOCKED)
@@ -728,26 +734,29 @@ class player(object):
 
                 if self.monotonicState != newMonoState:
                     self.monotonicState = newMonoState
-                    self.vlcStop()
+                    if (not self.sourceMan.waitForMediaHangup()) or self.vlcMediaFD != self.sourceMan.getMediaFd():
+                        self.vlcStop()
                     print("Param Restart")
                 if self.vlcPlayer.get_state() not in [vlc.State.Playing, vlc.State.Opening] and self.config.debug.autoplay:
                     self.vlcPlay()
                     self.osd.activate(4, rydeplayer.osd.display.TimerLength.PROGRAMTRIGGER)
                 self.gpioMan.setRXgood(True)
             else:
-                self.playbackState.setState(rydeplayer.states.playback.States.NOLOCK)
-                if self.config.debug.autoplay:
+                if self.config.debug.autoplay and not self.sourceMan.waitForMediaHangup():
                     self.vlcStop()
-                self.gpioMan.setRXgood(False)
+                if vlcState != vlc.State.Playing:
+                    self.playbackState.setState(rydeplayer.states.playback.States.NOLOCK)
+                    self.gpioMan.setRXgood(False)
         else:
-            if state.isStarted:
-                self.playbackState.setState(rydeplayer.states.playback.States.SOURCELOAD)
-            else:
-                self.playbackState.setState(rydeplayer.states.playback.States.NOSOURCE)
-            if self.config.debug.autoplay:
+            if vlcState != vlc.State.Playing:
+                if state.isStarted:
+                    self.playbackState.setState(rydeplayer.states.playback.States.SOURCELOAD)
+                else:
+                    self.playbackState.setState(rydeplayer.states.playback.States.NOSOURCE)
+                self.gpioMan.setRXgood(False)
+            if self.config.debug.autoplay and not self.sourceMan.waitForMediaHangup():
                 self.vlcStop()
 #               print("parsed:"+str(vlcMedia.is_parsed()))
-            self.gpioMan.setRXgood(False)
         self.vlcPlayer.audio_set_mute(self.mute)
         self.vlcPlayer.audio_set_volume(self.volume)
         print(self.vlcPlayer.get_state())
@@ -798,8 +807,21 @@ class player(object):
         self.vlcInstance = vlc.Instance(vlcArgs)
 
         self.vlcPlayer = self.vlcInstance.media_player_new()
+        vlcEvents = self.vlcPlayer.event_manager()
+        vlcEvents.event_attach(vlc.EventType.MediaPlayerEndReached, self.vlcStopOnEndEvent)
         self.vlcMediaFD = self.sourceMan.getMediaFd()
         self.vlcMedia = self.vlcInstance.media_new_fd(self.vlcMediaFD)
+
+    def vlcStopOnEndEvent(self, event):
+        self.sendVLCEvent.send(b"\x00")
+
+    def vlcStopOnEndMain(self):
+        self.recvVLCEvent.recv(1)
+        if self.vlcPlayer.get_state() == vlc.State.Ended:
+            self.vlcStop()
+
+    def vlcStopOnRetune(self, newConfig):
+        self.vlcStop()
 
 def run():
     parser = argparse.ArgumentParser()

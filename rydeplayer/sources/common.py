@@ -986,6 +986,9 @@ class sourceManagerThread(object):
             self.thread.start()
             self.start()
 
+    # should the player expect the pipe to be hungup fore resetting
+    def waitForMediaHangup(self):
+        return self.sourceMan.waitForMediaHangup()
     def remedia(self):
         self.sourceMan.remedia()
 

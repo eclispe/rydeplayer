@@ -312,6 +312,8 @@ class combiTunerManager(object):
             self.activeConfig = config.copyConfig()
             print(self.activeConfig)
             self.restart()
+    def waitForMediaHangup(self):
+        return False
     def remedia(self):
         os.close(self.vlcMediaFd)
         self.vlcMediaFd = os.open(self.mediaFIFOfilename, flags=os.O_NONBLOCK, mode=os.O_RDONLY) # an open file descriptor to pass to vlc (or another player)
