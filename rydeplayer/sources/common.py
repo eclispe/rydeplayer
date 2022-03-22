@@ -767,6 +767,90 @@ class tunerConfigIntList(tunerConfigGeneral):
     def __hash__(self):
         return hash((tuple(self.getValues()), self.isSingle()))
 
+# Stores the a tuner string and its limits
+class tunerConfigStr(tunerConfigGeneral):
+    def __init__(self, value, maxLen, allowBlank, longName, prereqConfigs=None):
+
+        self.value = value
+        if maxLen >= 0:
+            self.maxLen = maxLen
+        else:
+            self.maxLen = 0
+        if isinstance(allowBlank, bool):
+            self.allowBlank = allowBlank
+        else:
+            self.allowBlank = False
+
+        super().__init__(initValid=(len(value) <= self.maxLen and (len(value)>0 or self.allowBlank) ), longName=longName, prereqConfigs=prereqConfigs)
+
+    def setValue(self, newval):
+        if self.value != newval:
+            self.value = newval
+            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank))
+
+    def setMaxLen(self, newMaxLen):
+        if self.maxLen != newMaxLen:
+            if maxLen >= 0:
+                self.maxLen = maxLen
+            else:
+                self.maxLen = 0
+            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank))
+
+    def setAllowBlank(self, newAllowBlank):
+        if self.allowBlank != newAllowBlank:
+            if isinstance(allowBlank, bool):
+                self.allowBlank = allowBlank
+            else:
+                self.allowBlank = False
+            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank))
+
+    def getValue(self):
+        return self.value
+
+    def getMaxLen(self):
+        return self.maxLen
+
+    def getAllowBlank(self):
+        return self.allowBlank
+
+    def copyConfig(self):
+        return tunerConfigStr(self.value, self.maxLen, self.allowBlank, self.longName)
+
+    # parse config file value and return new object using this one as a template
+    def parseNew(self, config):
+        newConf = self.copyConfig()
+        perfectConfig = True
+        updated = False
+        if isinstance(config, str):
+            newConf.setValue(config)
+            updated=True
+        else:
+            print("Config invalid for var:"+self.longName)
+            perfectConfig = False
+        if updated:
+            return (perfectConfig, newConf)
+        else:
+            return (perfectConfig, None)
+
+    # update this to match other config
+    def updateToMatch(self, newVal):
+        if isinstance(newVal, tunerConfigStr):
+            self.setValue(newVal.getValue())
+        else:
+            raise NotImplementedError
+
+    def __str__(self):
+        return str(self.value)
+
+    def __eq__(self, other):
+        if not isinstance(other,tunerConfigStr):
+            raise NotImplementedError
+        else:
+            return other.getValue() == self.getValue()
+
+    def __hash__(self):
+        return hash(self.getValue())
+
 class tunerConfig(rydeplayer.common.validTracker):
     def __init__(self):
         self.updateCallbacks = [] # function that is called when the config changes
