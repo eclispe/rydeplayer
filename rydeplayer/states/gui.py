@@ -476,26 +476,27 @@ class ListSelect(SuperStatesSurface):
                 return True
         return False
 
-# single digit selector for a larger number
-class DigitSelect(StatesSurface):
-    def __init__(self, theme, left, right, currentValue, maxValue, minValue, errorHighlight):
+# single character selector for a larger string
+class CharacterSelect(StatesSurface):
+    def __init__(self, theme, left, right, currentValue, chars, directEventMapFunc, errorHighlight):
         super().__init__(theme)
         self.active = False
         self.next = None
         self.done = False
-        self.minValue = minValue
-        self.maxValue = maxValue
         self.right = right
         self.left = left
-        # what is the largest digit in this font, make the box that big
-        boxheight = self.theme.fonts.menuH1.size("0123456789")[1] + self.theme.menuHeight*0.01
+        self.chardict = chars
+        self.charlist = list(chars.keys())
+        self.directEventMapFunc = directEventMapFunc
+        # what is the largest char in this font, make the box that big
+        boxheight = self.theme.fonts.menuH1.size("".join(chars.values()))[1] + self.theme.menuHeight*0.01
         maxdigitwidth = 0
-        for n in range(minValue, maxValue+1):
-            maxdigitwidth = max(maxdigitwidth,self.theme.fonts.menuH1.size(str(n))[0])
+        for n in self.chardict:
+            maxdigitwidth = max(maxdigitwidth,self.theme.fonts.menuH1.size(self.chardict[n])[0])
         boxwidth = maxdigitwidth + self.theme.menuWidth*0.02
         # actual drawing
         self.surface = pygame.Surface((boxwidth, boxheight), pygame.SRCALPHA)
-        self.textSurface = self.theme.fonts.menuH1.render(str(currentValue), True, self.theme.colours.black)
+        self.textSurface = self.theme.fonts.menuH1.render(self.chardict[currentValue], True, self.theme.colours.black)
         self.surface.fill(self.theme.colours.transparent)
         self.textrect = self.textSurface.get_rect()
         self.textrect.centery = self.surface.get_height()/2
@@ -515,16 +516,16 @@ class DigitSelect(StatesSurface):
         self.active = True
     def get_event(self, event):
         if( event == navEvent.UP):
-            if(self.currentValue >= self.maxValue):
-                self.currentValue = self.minValue
+            if self.currentValue == self.charlist[-1]:
+                self.currentValue = self.charlist[0]
             else:
-                self.currentValue += 1 
+                self.currentValue = self.charlist[self.charlist.index((self.currentValue))+1]
             return True
         elif( event == navEvent.DOWN):
-            if(self.currentValue <= self.minValue):
-                self.currentValue = self.maxValue
+            if(self.currentValue == self.charlist[0]):
+                self.currentValue = self.charlist[-1]
             else:
-                self.currentValue -= 1 
+                self.currentValue = self.charlist[self.charlist.index((self.currentValue))-1]
             return True
         elif( event == navEvent.LEFT):
             if(self.left != None):
@@ -536,18 +537,20 @@ class DigitSelect(StatesSurface):
                 self.next=self.right
                 self.done=True
                 return True
-        elif( event.isNumeric() ):
-            # handle direct digit input
-            intevent = event.numericValue
-            if(intevent < self.minValue or intevent > self.maxValue):
+        else:
+            # handle direct char input
+            canHandle, newVal = self.directEventMapFunc(event)
+            if canHandle and newVal not in self.charlist:
                 return True
-            else:
-                self.currentValue = intevent
+            elif canHandle:
+                self.currentValue = newVal
                 self.drawDigit()
                 if(self.right != None):
                     self.next=self.right
                     self.done=True
                 return True
+            else:
+                return False
         return False
     def setValue(self, newValue):
         self.currentValue = newValue
@@ -563,7 +566,7 @@ class DigitSelect(StatesSurface):
         textColour = self.theme.colours.black
         if self.errorHighlight:
             textColour = self.theme.colours.textError
-        self.textSurface = self.theme.fonts.menuH1.render(str(self.currentValue), True, textColour)
+        self.textSurface = self.theme.fonts.menuH1.render(self.chardict[self.currentValue], True, textColour)
         if self.active:
             self.surface.fill(self.theme.colours.transpBack)
         else:
@@ -596,6 +599,11 @@ class NumberSelect(SuperStatesSurface):
         # reset back to the first digit if we close the menu
         self.state_name = '0'
         self.surface.fill(self.theme.colours.transparent)
+    def mapEventToNumeric(self, event):
+        if event.isNumeric():
+            return (True, event.numericValue)
+        else:
+            return (False, None)
     def startup(self):
         # how many digits do we need to allow the max number to be put in
         self.digitCount = len(str(max(self.valueConfig.getMaxValue(), self.valueConfig.getValue())))
@@ -619,7 +627,10 @@ class NumberSelect(SuperStatesSurface):
             if(maxDigit > 9):
                 maxDigit = 9
             # name the state after its position
-            self.state_dict[str(key)] = DigitSelect(self.theme, prevkey, nextkey, currentDigit, maxDigit, 0, not self.inRange)
+            chars={}
+            for n in range(0, maxDigit+1):
+                chars[n]=str(n)
+            self.state_dict[str(key)] = CharacterSelect(self.theme, prevkey, nextkey, currentDigit, chars, self.mapEventToNumeric, not self.inRange)
             boxwidth += self.state_dict[str(key)].surface.get_width() + self.theme.menuWidth*0.01
         boxwidth += self.theme.fonts.menuH1.size(self.unittext)[0]
         # create and setup the surface
