@@ -496,7 +496,10 @@ class CharacterSelect(StatesSurface):
         boxwidth = maxdigitwidth + self.theme.menuWidth*0.02
         # actual drawing
         self.surface = pygame.Surface((boxwidth, boxheight), pygame.SRCALPHA)
-        self.textSurface = self.theme.fonts.menuH1.render(self.chardict[currentValue], True, self.theme.colours.black)
+        if currentValue in self.chardict:
+            self.textSurface = self.theme.fonts.menuH1.render(self.chardict[currentValue], True, self.theme.colours.black)
+        else:
+            self.textSurface = self.theme.errCharSurface.copy()
         self.surface.fill(self.theme.colours.transparent)
         self.textrect = self.textSurface.get_rect()
         self.textrect.centery = self.surface.get_height()/2
@@ -515,25 +518,25 @@ class CharacterSelect(StatesSurface):
         self.drawDigit()
         self.active = True
     def get_event(self, event):
-        if( event == navEvent.UP):
-            if self.currentValue == self.charlist[-1]:
+        if event == navEvent.UP:
+            if self.currentValue == self.charlist[-1] or self.currentValue is None:
                 self.currentValue = self.charlist[0]
             else:
                 self.currentValue = self.charlist[self.charlist.index((self.currentValue))+1]
             return True
-        elif( event == navEvent.DOWN):
-            if(self.currentValue == self.charlist[0]):
+        elif event == navEvent.DOWN:
+            if self.currentValue == self.charlist[0] or self.currentValue is None:
                 self.currentValue = self.charlist[-1]
             else:
                 self.currentValue = self.charlist[self.charlist.index((self.currentValue))-1]
             return True
-        elif( event == navEvent.LEFT):
+        elif event == navEvent.LEFT:
             if(self.left != None):
                 self.next=self.left
                 self.done=True
                 return True
-        elif( event == navEvent.RIGHT):
-            if(self.right != None):
+        elif event == navEvent.RIGHT:
+            if self.right != None:
                 self.next=self.right
                 self.done=True
                 return True
@@ -566,7 +569,10 @@ class CharacterSelect(StatesSurface):
         textColour = self.theme.colours.black
         if self.errorHighlight:
             textColour = self.theme.colours.textError
-        self.textSurface = self.theme.fonts.menuH1.render(self.chardict[self.currentValue], True, textColour)
+        if self.currentValue in self.chardict:
+            self.textSurface = self.theme.fonts.menuH1.render(self.chardict[self.currentValue], True, self.theme.colours.black)
+        else:
+            self.textSurface = self.theme.errCharSurface.copy()
         if self.active:
             self.surface.fill(self.theme.colours.transpBack)
         else:

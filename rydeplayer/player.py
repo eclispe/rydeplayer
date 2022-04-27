@@ -47,10 +47,13 @@ class Theme(object):
         self.menuHeight = self.displayHeight
         playStateTitleFontSize=self.fontSysSizeOptimize('Not Loaded', displaySize[0]/2, 'freesans')
         menuH1FontSize=self.fontSysSizeOptimize('BATC Ryde Project', self.menuWidth*0.85, 'freesans')
+        inCharFontSize=self.fontSysSizeOptimize('Err', menuH1FontSize-(self.menuWidth*0.01), 'freesans')
         self.fonts = type('fonts', (object,), {
             'menuH1': pygame.font.SysFont('freesans', menuH1FontSize),
             'playStateTitle' :  pygame.font.SysFont('freesans', playStateTitleFontSize),
+            'inCharFont' :  pygame.font.SysFont('freesans', inCharFontSize),
             })
+        self.errCharSurface = pygame.transform.rotate(self.fonts.inCharFont.render("Err", True, self.colours.black), 90)
         self._circlecache = {}
         self.logofile = pkg_resources.resource_stream('rydeplayer.resources', 'logo_menu.png')
         self.muteicon = pkg_resources.resource_stream('rydeplayer.resources', 'icon_mute.png')
