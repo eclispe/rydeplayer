@@ -770,9 +770,21 @@ class tunerConfigIntList(tunerConfigGeneral):
 
 # Stores the a tuner string and its limits
 class tunerConfigStr(tunerConfigGeneral):
-    def __init__(self, value, maxLen, allowBlank, longName, prereqConfigs=None):
+    def __init__(self, value, maxLen, allowBlank, charset, longName, prereqConfigs=None):
 
         self.value = value
+        if isinstance(charset, list):
+            validChars = True
+            for char in charset:
+                if not isinstance(char, str) or len(char)>1:
+                    validChars = False
+                    break
+            if validChars:
+                self.validChars = charset
+            else:
+                self.validChars = []
+        else:
+            self.validChars = []
         if maxLen >= 0:
             self.maxLen = maxLen
         else:
@@ -782,12 +794,12 @@ class tunerConfigStr(tunerConfigGeneral):
         else:
             self.allowBlank = False
 
-        super().__init__(initValid=(len(value) <= self.maxLen and (len(value)>0 or self.allowBlank) ), longName=longName, prereqConfigs=prereqConfigs)
+        super().__init__(initValid=( len(value) <= self.maxLen and (len(value)>0 or self.allowBlank) and set(value) <= set(validChars) ), longName=longName, prereqConfigs=prereqConfigs)
 
     def setValue(self, newval):
         if self.value != newval:
             self.value = newval
-            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank))
+            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank) and set(self.value) <= set(self.validChars))
 
     def setMaxLen(self, newMaxLen):
         if self.maxLen != newMaxLen:
@@ -795,7 +807,7 @@ class tunerConfigStr(tunerConfigGeneral):
                 self.maxLen = maxLen
             else:
                 self.maxLen = 0
-            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank))
+            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank) and set(self.value) <= set(self.validChars))
 
     def setAllowBlank(self, newAllowBlank):
         if self.allowBlank != newAllowBlank:
@@ -803,7 +815,23 @@ class tunerConfigStr(tunerConfigGeneral):
                 self.allowBlank = allowBlank
             else:
                 self.allowBlank = False
-            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank))
+            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank) and set(self.value) <= set(self.validChars))
+
+    def setValidChars(self, newValidChars):
+        if self.validChars != newValidChars:
+            if isinstance(newValidChars, list):
+                validChars = True
+                for char in newValidChars:
+                    if not isinstance(char, str) or len(char)>1:
+                        validChars = False
+                        break
+                if validChars:
+                    self.validChars = newValidChars
+                else:
+                    self.validChars = []
+            else:
+                self.validChars = []
+            self.updateValid(len(self.value) <= self.maxLen and (len(self.value)>0 or self.allowBlank) and set(self.value) <= set(self.validChars))
 
     def getValue(self):
         return self.value
@@ -814,8 +842,11 @@ class tunerConfigStr(tunerConfigGeneral):
     def getAllowBlank(self):
         return self.allowBlank
 
+    def getValidChars(self):
+        return self.validChars
+
     def copyConfig(self):
-        return tunerConfigStr(self.value, self.maxLen, self.allowBlank, self.longName)
+        return tunerConfigStr(self.value, self.maxLen, self.allowBlank, self.validChars, self.longName)
 
     # parse config file value and return new object using this one as a template
     def parseNew(self, config):
