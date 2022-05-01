@@ -716,6 +716,48 @@ class NumberSelect(CharSeqSelect):
         self.charCount = len(str(max(self.valueConfig.getMaxValue(), self.valueConfig.getValue())))
         super().startup()
 
+# sub menu for inputing strings and pass new value to callback when done
+class StringSelect(CharSeqSelect):
+    def __init__(self, theme, backState, valueConfig, updateCallback):
+        super().__init__(theme, backState, valueConfig, updateCallback)
+        # how many chars do we need
+        self.charCount = max(self.valueConfig.getMaxLen(), len(self.valueConfig.getValue()))
+        self.charset = self.valueConfig.getValidChars()
+
+    def _mapEventToCharKey(self, event):
+        return (False, None)
+
+    def _getValue(self):
+        newValue = ""
+        for n in range(self.charCount):
+            charState = self.state_dict[str(n)]
+            if charState.currentValue is None:
+                newValue += self.currentValue[n]
+            else:
+                newValue += charState.currentValue
+        return newValue.strip()
+
+    def _updateValid(self, newValue):
+        self.validValue = len(newValue)>0 or self.valueConfig.getAllowBlank()
+
+    def _charValueFromIndex(self, n):
+        if n < len(self.currentValue):
+            if self.currentValue[n] in self.charset:
+                print(self.currentValue[n])
+                return self.currentValue[n]
+            else:
+                return None
+        else:
+            return " "
+
+    def _charmapFromIndex(self, n):
+        return {x:x for x in self.charset}
+
+    def startup(self):
+        # how many chars do we need
+        self.charCount = max(self.valueConfig.getMaxLen(), len(self.valueConfig.getValue()))
+        super().startup()
+
 # sub menu for inputing multiple whole numbers and execute a callback when done
 class MultipleNumberSelect(SubMenuGeneric):
     def __init__(self, theme, backState, valueConfig, updateCallback):

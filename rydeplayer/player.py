@@ -215,6 +215,10 @@ class guiState(rydeplayer.states.gui.SuperStates):
                 mainMenuStates[key+'-sel'] = rydeplayer.states.gui.NumberSelect(self.theme, key, tunerConfigVars[key], config.tuner.runCallbacks)
                 validVar = True
 
+            if isinstance(tunerConfigVars[key], rydeplayer.sources.common.tunerConfigStr):
+                mainMenuStates[key+'-sel'] = rydeplayer.states.gui.StringSelect(self.theme, key, tunerConfigVars[key], config.tuner.runCallbacks)
+                validVar = True
+
             if validVar:
                 if firstkey is None:
                     firstkey = key
