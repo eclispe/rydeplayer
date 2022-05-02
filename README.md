@@ -8,7 +8,7 @@ The software is designed and tested on a Raspberry Pi 4 although it will likely 
 
 Install packaged dependencies:
 
-```sudo apt-get install python3-pygame python3-vlc python3-yaml python3-evdev python3-pil vlc-plugin-base```
+```sudo apt-get install python3-pygame python3-vlc python3-yaml python3-evdev python3-pil vlc-plugin-base python3-librtmp```
 
 Install pyDispmanx driver from https://github.com/eclispe/pyDispmanx and ensure the .so file is in your PYTHONPATH
 
@@ -30,18 +30,21 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
 
 * ```bands```
   * Name of the band, you may have to put it in double quotes ```"``` if you want to use names with various caracters such as ```:``` in it. It is recommended that you add an anchor if you need to reference the band later, e.g. ```"LNB Low": &bandlnblow```
-    * ```source``` The name of the signal source type, the other options in the band only apply for certain sources, see options below for details. Currently supports ```LONGMYND``` or ```COMBITUNER```
-    * ```lofreq``` LO frequency value in kHz
-    * ```loside``` Select either ```HIGH``` or ```LOW``` when using the difference mixing product where the LO is above or below the RF frequency respectively or ```SUM``` if using the sum mixing product.
+    * ```source``` The name of the signal source type, the other options in the band only apply for certain sources, see options below for details. Currently supports ```LONGMYND```, ```COMBITUNER``` or ```RTMPSTREAM```
+    * ```lofreq``` LO frequency value in kHz. Currently supports ```LONGMYND``` or ```COMBITUNER```
+    * ```loside``` Select either ```HIGH``` or ```LOW``` when using the difference mixing product where the LO is above or below the RF frequency respectively or ```SUM``` if using the sum mixing product. Currently supports ```LONGMYND``` or ```COMBITUNER```
     * ```pol``` Band polarity, selects bias voltage. Choose from ```NONE```, ```HORIZONTAL``` or ```VERTICAL```. Supported sources: ```LONGMYND```
     * ```port``` Band input port. Choose from ```TOP``` or ```BOTTOM```. Supported sources: ```LONGMYND```
+    * ```domain``` Band RTMP server domain e.g. ```rtmp.batc.org.uk```. Supported sources: ```RTMPSTREAM```
+    * ```rtmpapp``` Band RTMP server app name, often the directory from the URL, e.g. ```live```. Supported sources: ```RTMPSTREAM```
     * ```gpioid``` Band GPIO ID, valid values are 0-7.
 * ```presets```
   * Name of the preset, following the same naming rules as for bands above. supported options vary depending on the source specified in the band, see indigidual options for details. It is also recommended you add an anchor to a preset to use as the default also similar to bands above, e.g. ```"QO-100 Beacon": &presetdefault```
     * ```band``` Preset band, its recommended to use an alias to a band in the band library, e.g. ```band: *bandlnblow```
-    * ```freq``` Preset frequency to tune, this can either be a single frequency or if using source ```LONGMYND``` a list of frequencies to enable frequency scanning
+    * ```freq``` Preset frequency to tune, this can either be a single frequency or if using source ```LONGMYND``` a list of frequencies to enable frequency scanning. Supported sources: ```LONGMYND``` or ```COMBITUNER```
     * ```sr``` Preset symbol rate in kSps, this can either be a single symbol rate or a list of symbol rates to enable symbol rate scanning. Supported sources: ```LONGMYND```
     * ```bw``` Preset bandwidth in kHz. Supported sources: ```COMBITUNER```
+    * ```streamname``` Preset RTMP stream name e.g. ```oscar100net```. Supported sources: ```RTMPSTREAM```
 
 * ```default```
   * Initial settings, its recommended to use an alias to a preset in the preset library, e.g. ```default: *presetdefault```

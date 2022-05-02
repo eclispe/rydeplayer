@@ -30,6 +30,7 @@ class sourceModeEnum(enum.Enum):
 class sources(enum.Enum):
     LONGMYND = enum.auto()
     COMBITUNER = enum.auto()
+    RTMPSTREAM = enum.auto()
 
     def getSource(self):
         thisSource = rydeplayer.sources.common.source.getSource(self)

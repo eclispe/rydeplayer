@@ -30,6 +30,11 @@ bands:
         pol:  HORIZONTAL
         port: TOP
         gpioid: 0
+    BATC Streamer: &bandbatcstream
+        source: RTMPSTREAM
+        domain: rtmp.batc.org.uk
+        rtmpapp: live
+        gpioid: 0
 
 presets:
     QO-100 Beacon: &presetdefault
@@ -53,6 +58,10 @@ presets:
         freq: 437000
         bw:   333
         band: *bandnonect
+
+    QO-100 net stream:
+        streamname: oscar100net
+        band: *bandbatcstream
 
 default: *presetdefault
 

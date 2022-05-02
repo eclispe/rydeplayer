@@ -18,6 +18,7 @@ import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, impor
 import rydeplayer.sources.common
 import rydeplayer.sources.longmynd
 import rydeplayer.sources.combituner
+import rydeplayer.sources.rtmpstream
 from . import ir
 import rydeplayer.gpio
 import rydeplayer.network
