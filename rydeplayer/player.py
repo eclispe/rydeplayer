@@ -1,5 +1,5 @@
 #    Ryde Player provides a on screen interface and video player for Longmynd compatible tuners.
-#    Copyright © 2021 Tim Clark
+#    Copyright © 2022 Tim Clark
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ from . import ir
 import rydeplayer.gpio
 import rydeplayer.network
 import rydeplayer.common
+import rydeplayer.watchdog
 import rydeplayer.states.gui
 import rydeplayer.states.playback
 import rydeplayer.osd.display
@@ -355,6 +356,7 @@ class rydeConfig(object):
         self.presets = {}
         self.osd = rydeplayer.osd.display.Config(theme)
         self.network = rydeplayer.network.networkConfig()
+        self.sourceWatchdog = rydeplayer.watchdog.sourceWatchdogConfig()
         self.shutdownBehavior = rydeplayer.common.shutdownBehavior.APPSTOP
         self.audio = type('audioConfig', (object,), {
             'muteOnStartup': False,
@@ -467,6 +469,9 @@ class rydeConfig(object):
             # pass the network config to be parsed by the network config container
             if 'network' in config:
                 perfectConfig = perfectConfig and self.network.loadConfig(config['network'])
+            # pass the source watchdog config to be parsed by the source watchdog config container
+            if 'watchdog' in config:
+                perfectConfig = perfectConfig and self.sourceWatchdog.loadConfig(config['watchdog'])
             # parse shutdown default shutdown event behavior
             if 'shutdownBehavior' in config:
                 if isinstance(config['shutdownBehavior'], str):
@@ -608,6 +613,10 @@ class player(object):
         # start network
         self.netMan = rydeplayer.network.networkManager(self.config, self.stepSM, self.setMute, debugFunctions)
 
+        # setup source watchdog
+        self.watchdog = rydeplayer.watchdog.sourceWatchdog(self.config.sourceWatchdog, self.sourceReset)
+        self.config.tuner.addCallbackFunction(self.watchdog.reset)
+
         # setup ir
         self.irMan = ir.irManager(self.stepSM, self.config.ir)
 
@@ -625,7 +634,7 @@ class player(object):
         # main event loop
         while not quit:
             # need to regen every loop, lm stdout handler changes on lm restart
-            fds = self.irMan.getFDs() + self.sourceMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs() + [self.recvVLCEvent]
+            fds = self.irMan.getFDs() + self.sourceMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs() + self.watchdog.getFDs() + [self.recvVLCEvent]
             r, w, x = select.select(fds, [], [])
             for fd in r:
                 quit = self.handleEvent(fd)
@@ -728,6 +737,8 @@ class player(object):
             quit = self.osd.handleFD(fd)
         elif(fd in self.netMan.getFDs()):
             quit = self.netMan.handleFD(fd)
+        elif(fd in self.watchdog.getFDs()):
+            self.watchdog.handleFD(fd)
         elif(fd == self.recvVLCEvent):
             self.vlcStopOnEndMain()
         return quit
@@ -736,11 +747,11 @@ class player(object):
         # update playback state
         state = self.sourceMan.getCoreState()
         vlcState = self.vlcPlayer.get_state()
-        if(state.isRunning):
-            if(state.isLocked):
+        if state.isRunning:
+            self.watchdog.service()
+            if state.isLocked:
                 self.playbackState.setState(rydeplayer.states.playback.States.LOCKED)
                 newMonoState = state.monotonicState
-
                 if self.monotonicState != newMonoState:
                     self.monotonicState = newMonoState
                     if (not self.sourceMan.waitForMediaHangup()) or self.vlcMediaFD != self.sourceMan.getMediaFd():
@@ -760,8 +771,10 @@ class player(object):
             if vlcState != vlc.State.Playing:
                 if state.isStarted:
                     self.playbackState.setState(rydeplayer.states.playback.States.SOURCELOAD)
+                    self.watchdog.cancel() # its running, cancel any auto restart
                 else:
                     self.playbackState.setState(rydeplayer.states.playback.States.NOSOURCE)
+                    self.watchdog.fault()
                 self.gpioMan.setRXgood(False)
             if self.config.debug.autoplay and not self.sourceMan.waitForMediaHangup():
                 self.vlcStop()

@@ -122,6 +122,11 @@ network:
     bindaddr: 'localhost'
     port: 8765
 
+watchdog:
+    minRestartTime: 0.1
+    maxRestartTime: 300
+    backoffRate: 2
+
 shutdownBehavior: APPSTOP
 
 audio:
