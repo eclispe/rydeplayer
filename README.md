@@ -86,10 +86,10 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
 * ```network``` This section contains the network control configuration
   * ```bindaddr``` The address of the local network interface use or '' to use all interfaces
   * ```port```  The TCP port number to use
-* ```watchdog``` This section contains the source watchdog configuration
-  * ```minRestartTime``` Initial time to wait after source unload before retrying
-  * ```maxRestartTime``` Maximum time to wait after source unload before retrying
-  * ```backoffRate``` How much to multiply the wait time by for each failed restart, must be at least 1
+* ```watchdog``` This section contains the source watchdog configuration, it can be populated as below or set to ```null``` to disable the watchdog.
+  * ```minRestartTime``` Initial time to wait after source unload before retrying, must be greater than 0 and not more than ```maxRestartTime```.
+  * ```maxRestartTime``` Maximum time to wait after source unload before retrying, must be not less than ```minRestartTime```.
+  * ```backoffRate``` How much to multiply the wait time by for each failed restart, must be at least.
 * ```shutdownBehavior``` The default shutdown option when the power button is double pressed. Choose from ```APPSTOP``` or ```APPREST``` to stop the player or restart the player respectively.
 * ```audio``` This section contains audio configuration options
   * ```muteOnStartup``` Set the default mute status to use when starting the player

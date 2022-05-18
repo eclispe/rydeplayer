@@ -21,16 +21,28 @@ class sourceWatchdogConfig(object):
         self.minRestartTime = 0.1
         self.maxRestartTime = 300
         self.backoffRate = 2
+        self.enabled = True
 
     # parse a dict containing the source watchdog config
     def loadConfig(self, config):
         perfectConfig = True
         if isinstance(config, dict):
+            self.enabled = True
+            minCandidate = self.minRestartTime
+            maxCandidate = self.maxRestartTime
             if 'minRestartTime' in config:
                 if isinstance(config['minRestartTime'], int):
-                    self.minRestartTime = float(config['minRestartTime'])
+                    if float(config['minRestartTime']) > 0:
+                        minCandidate = float(config['minRestartTime'])
+                    else:
+                        print("Minimum restart time must be greater than 0, skipping")
+                        perfectConfig = False
                 elif isinstance(config['minRestartTime'], float):
-                    self.minRestartTime = config['minRestartTime']
+                    if config['minRestartTime'] > 0:
+                        minCandidate = config['minRestartTime']
+                    else:
+                        print("Minimum restart time must be greater than 0, skipping")
+                        perfectConfig = False
                 else:
                     print("Invalid minimum restart time, skipping")
                     perfectConfig = False
@@ -40,22 +52,21 @@ class sourceWatchdogConfig(object):
 
             if 'maxRestartTime' in config:
                 if isinstance(config['minRestartTime'], int):
-                    if self.minRestartTime <= float(config['maxRestartTime']):
-                        self.maxRestartTime = float(config['maxRestartTime'])
-                    else:
-                        print("Maximum restart time is smaller than minimum restart time, skipping")
-                        perfectConfig = False
+                    maxCandidate = float(config['maxRestartTime'])
                 elif isinstance(config['minRestartTime'], float):
-                    if self.minRestartTime <= config['maxRestartTime']:
-                        self.maxRestartTime = config['maxRestartTime']
-                    else:
-                        print("Maximum restart time is smaller than minimum restart time, skipping")
-                        perfectConfig = False
+                    maxCandidate = config['maxRestartTime']
                 else:
                     print("Invalid maximum restart time, skipping")
                     perfectConfig = False
             else:
                 print("No maximum restart time, skipping")
+                perfectConfig = False
+
+            if minCandidate <= maxCandidate:
+                self.minRestartTime = minCandidate
+                self.maxRestartTime = maxCandidate
+            else:
+                print("Maximum restart time must be at least the minimum restart time, ignoring")
                 perfectConfig = False
 
             if 'backoffRate' in config:
@@ -77,7 +88,8 @@ class sourceWatchdogConfig(object):
             else:
                 print("No backoff rate, skipping")
                 perfectConfig = False
-
+        elif config is None:
+            self.enabled = False
         else:
             print("Source watchdog config invalid, ignoring")
             perfectConfig = False
@@ -130,7 +142,7 @@ class sourceWatchdog(object):
             self.lastLoaded = time.monotonic()
 
     def fault(self):
-        if self.timer is None: # Watchdog not already waiting
+        if self.timer is None and self.config.enabled: # Watchdog not already waiting
             if self.lastAutostart is None or self.delay is None or (self.lastLoaded is not None and self.lastLoaded > self.lastAutostart and (time.monotonic() - self.lastLoaded) > self.delay):
                 self.delay = self.config.minRestartTime
             else:
