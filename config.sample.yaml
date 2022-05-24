@@ -34,6 +34,8 @@ bands:
         source: RTMPSTREAM
         domain: rtmp.batc.org.uk
         rtmpapp: live
+        networkTimeout: 5
+        networkTimeoutInit: 25
         gpioid: 0
 
 presets:

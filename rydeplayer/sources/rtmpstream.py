@@ -145,7 +145,7 @@ class rtmpStreamManager(object):
         self.stdoutReadfd, self.stdoutWritefd = os.pipe() # a pipe for passing the flv stream
         self.readThread.join()
         self.tunerStatus.setStatusToMatch(tunerStatus()) # reset status to defaults
-        self.readThread = threading.Thread(target=self._readThreadLoop, args=(self.rtmpConnection, self.stdoutWritefd, self.sendSockEvent, self.rtmpReadEventQueue, self.rtmpReadCommandQueue))
+        self.readThread = threading.Thread(target=self._readThreadLoop, args=(self.rtmpConnection, self.stdoutWritefd, self.sendSockEvent, self.rtmpReadEventQueue, self.rtmpReadCommandQueue, self.activeConfig.band.getNetworkTimeout(), self.activeConfig.band.getNetworkTimeout()))
         self.readThread.start()
 
 
@@ -224,20 +224,35 @@ class rtmpStreamManager(object):
         self.sendSockEvent.close()
 
     # thread loop to read RTMP data and put in the read pipe
-    def _readThreadLoop(self, conn, wPipeFd, eventSock, eventQueue, commQueue):
+    def _readThreadLoop(self, conn, wPipeFd, eventSock, eventQueue, commQueue, networkTimeout, networkTimeoutInit):
+        if not conn.connected:
+            try:
+                self.rtmpConnection.connect()
+            except librtmp.RTMPError:
+                eventQueue.put((eventsFromThread.ERROR, None))
+                eventSock.send(b'\00')
+                return
+
         fcntl.fcntl(wPipeFd, fcntl.F_SETFL, os.O_NONBLOCK)
         wPipe = os.fdopen(wPipeFd, mode="bw")
         starttimestamp = 0;
         lastData = None
+        lastPacket = time.monotonic()
         while True: # loop until break
             try:
                 packet=conn.read_packet()
             except librtmp.RTMPTimeoutError: # timed out reading packet
                 packet = None
-                if lastData is not None and time.monotonic() - lastData > 5:
-                    eventQueue.put((eventsFromThread.TIMEOUT, None))
-                    eventSock.send(b'\00')
-                    break
+                if lastData is None:
+                    if time.monotonic() - lastPacket > networkTimeoutInit:
+                        eventQueue.put((eventsFromThread.ERROR, None))
+                        eventSock.send(b'\00')
+                        break
+                else:
+                    if time.monotonic() - lastData > networkTimeout:
+                        eventQueue.put((eventsFromThread.TIMEOUT, None))
+                        eventSock.send(b'\00')
+                        break
             except librtmp.RTMPError:
                 packet = None
                 eventQueue.put((eventsFromThread.ERROR, None))
@@ -246,6 +261,7 @@ class rtmpStreamManager(object):
 
             if packet is not None:
                 conn.handle_packet(packet) # handle packets to keep server happy
+                lastPacket = time.monotonic()
                 if packet.type in [librtmp.packet.PACKET_TYPE_AUDIO, librtmp.packet.PACKET_TYPE_VIDEO]:
                     # pass on media packets
                     try:
@@ -329,16 +345,9 @@ class rtmpStreamManager(object):
                 self.statelog=[]
                 self.rtmplog=[]
                 self.rtmpConnection = librtmp.RTMP(urllib.parse.urlunsplit(('rtmp', self.activeConfig.band.getDomain(), '', '', '')), app=self.activeConfig.band.getApp(), playpath=self.activeConfig.streamname.getValue(), live=True, timeout=1)
-                try:
-                    self.rtmpConnection.connect()
-                except librtmp.RTMPError:
-                    print("can't connect rtmp")
-                    self.readThread = None
-                    self.threadRunning = False
-                else:
-                    print("rtmp thread start")
-                    self.readThread = threading.Thread(target=self._readThreadLoop, args=(self.rtmpConnection, self.stdoutWritefd, self.sendSockEvent, self.rtmpReadEventQueue, self.rtmpReadCommandQueue))
-                    self.readThread.start()
+                self.rtmpConnection.set_option('timeout', '1')
+                self.readThread = threading.Thread(target=self._readThreadLoop, args=(self.rtmpConnection, self.stdoutWritefd, self.sendSockEvent, self.rtmpReadEventQueue, self.rtmpReadCommandQueue, self.activeConfig.band.getNetworkTimeout(), self.activeConfig.band.getNetworkTimeoutInit()))
+                self.readThread.start()
                 self.lastState['locked'] = self.threadLocked
                 if self.lastState != self.changeRefState : # if the signal parameters have changed
                     self.stateMonotonic += 1
@@ -368,6 +377,8 @@ class band(rydeplayer.sources.common.tunerBand):
         self.source = rydeplayer.sources.common.sources.RTMPSTREAM
         self.domain = None
         self.app = None
+        self.networkTimeout = 5
+        self.networkTimeoutInit = 25
         super().__init__()
         self.source = rydeplayer.sources.common.sources.RTMPSTREAM
 
@@ -376,6 +387,8 @@ class band(rydeplayer.sources.common.tunerBand):
         super().dumpBand()
         self.dumpCache['domain'] = self.domain
         self.dumpCache['rtmpapp'] = self.app
+        self.dumpCache['networkTimeout'] = self.networkTimeout
+        self.dumpCache['networkTimeoutInit'] = self.networkTimeoutInit
         return self.dumpCache
 
     @classmethod
@@ -401,6 +414,18 @@ class band(rydeplayer.sources.common.tunerBand):
         else:
             print("RTMP app missing, skipping")
             perfectConfig = False
+        if 'networkTimeout' in config:
+            if isinstance(config['networkTimeout'], int):
+                self.networkTimeout = config['networkTimeout']
+            else:
+                print("Network timeout invalid, skipping")
+                perfectConfig = False
+        if 'networkTimeoutInit' in config:
+            if isinstance(config['networkTimeoutInit'], int):
+                self.networkTimeoutInit = config['networkTimeoutInit']
+            else:
+                print("Network initialisation timeout invalid, skipping")
+                perfectConfig = False
         return (perfectConfig, self)
 
     def getDomain(self):
@@ -408,6 +433,12 @@ class band(rydeplayer.sources.common.tunerBand):
 
     def getApp(self):
         return self.app
+
+    def getNetworkTimeout(self):
+        return self.networkTimeout
+
+    def getNetworkTimeoutInit(self):
+        return self.networkTimeoutInit
 
     # takes a current set of vars and adjusts them to be compatible with this sub band
     def syncVars(self, oldVars):
@@ -432,11 +463,11 @@ class band(rydeplayer.sources.common.tunerBand):
         if not isinstance(other, self.__class__):
             return False
         else:
-            comp = super().__eq__(other) and self.domain == other.domain and self.app == other.app
+            comp = super().__eq__(other) and self.domain == other.domain and self.app == other.app and self.networkTimeout == other.networkTimeout and self.networkTimeoutInit == other.networkTimeoutInit
             return comp
 
     def __hash__(self):
-        return hash((super().__hash__(), self.domain, self.app))
+        return hash((super().__hash__(), self.domain, self.app, self.networkTimeout, self.networkTimeoutInit))
 
 class source(rydeplayer.sources.common.source):
     @classmethod

@@ -37,6 +37,8 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
     * ```port``` Band input port. Choose from ```TOP``` or ```BOTTOM```. Supported sources: ```LONGMYND```
     * ```domain``` Band RTMP server domain e.g. ```rtmp.batc.org.uk```. Supported sources: ```RTMPSTREAM```
     * ```rtmpapp``` Band RTMP server app name, often the directory from the URL, e.g. ```live```. Supported sources: ```RTMPSTREAM```
+    * ```networkTimeout``` Band RTMP network timeout in seconds. Supported sources: ```RTMPSTREAM```
+    * ```networkTimeoutInit``` Band RTMP network initialisation timeout in seconds, likely needs to be larger than ```networkTimeout```. Supported sources: ```RTMPSTREAM```
     * ```gpioid``` Band GPIO ID, valid values are 0-7.
 * ```presets```
   * Name of the preset, following the same naming rules as for bands above. supported options vary depending on the source specified in the band, see indigidual options for details. It is also recommended you add an anchor to a preset to use as the default also similar to bands above, e.g. ```"QO-100 Beacon": &presetdefault```
