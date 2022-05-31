@@ -906,12 +906,13 @@ class tunerConfig(rydeplayer.common.validTracker):
 
     # update this tuner config to match the provided one
     def setConfigToMatch(self, fromConfig):
-        self.setBand(fromConfig.getBand())
-        fromVars = fromConfig.getVars()
-        for thisVar in self.vars:
-            self.vars[thisVar].updateToMatch(fromVars[thisVar])
-        self.updateValid()
-        self.runCallbacks()
+        if fromConfig != self:
+            self.setBand(fromConfig.getBand())
+            fromVars = fromConfig.getVars()
+            for thisVar in self.vars:
+                self.vars[thisVar].updateToMatch(fromVars[thisVar])
+            self.updateValid()
+            self.runCallbacks()
 
     def loadConfig(self, config, bandLibrary = []):
         configUpdated = False
@@ -959,19 +960,21 @@ class tunerConfig(rydeplayer.common.validTracker):
         return perfectConfig
 
     def setBand(self, newBand):
-        self.band = newBand
-        varsChanged, newVars = self.band.syncVars(self.vars)
-        if varsChanged:
-            # update the validity trackers to only be on current vars
-            for key in self.vars:
-                if isinstance(self.vars[key], rydeplayer.common.validTracker):
-                    self.vars[key].removeValidCallback(self.updateValid)
-            for key in newVars:
-                if isinstance(newVars[key], rydeplayer.common.validTracker):
-                    newVars[key].addValidCallback(self.updateValid)
-            self.vars = newVars
-            self.runVarChangeCallbacks()
-        self.runCallbacks()
+        if self.band != newBand:
+            self.band = newBand
+            varsChanged, newVars = self.band.syncVars(self.vars)
+            if varsChanged:
+                # update the validity trackers to only be on current vars
+                for key in self.vars:
+                    if isinstance(self.vars[key], rydeplayer.common.validTracker):
+                        self.vars[key].removeValidCallback(self.updateValid)
+                for key in newVars:
+                    if isinstance(newVars[key], rydeplayer.common.validTracker):
+                        newVars[key].addValidCallback(self.updateValid)
+                self.vars = newVars
+                self.runVarChangeCallbacks()
+            self.runCallbacks()
+
     def getBand(self):
         return self.band
 

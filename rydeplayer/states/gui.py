@@ -660,10 +660,11 @@ class CharSeqSelect(SuperStatesSurface):
                 self.done = True
                 return True
             if event == navEvent.SELECT :
-                self.currentValue = newValue
-                self.valueConfig.setValue(newValue)
-                if self.updateCallback is not None:
-                    self.updateCallback()
+                if self.currentValue != newValue:
+                    self.currentValue = newValue
+                    self.valueConfig.setValue(newValue)
+                    if self.updateCallback is not None:
+                        self.updateCallback()
                 self.done = True
                 return True
         else:
