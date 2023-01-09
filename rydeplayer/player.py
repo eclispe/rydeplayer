@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import pygame, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys, socket
+import pygame, pygame.ftfont, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys, socket
 import rydeplayer.sources.common
 import rydeplayer.sources.longmynd
 import rydeplayer.sources.combituner
@@ -51,9 +51,9 @@ class Theme(object):
         menuH1FontSize=self.fontSysSizeOptimize('BATC Ryde Project', self.menuWidth*0.85, 'freesans')
         inCharFontSize=self.fontSysSizeOptimize('Err', menuH1FontSize-(self.menuWidth*0.01), 'freesans')
         self.fonts = type('fonts', (object,), {
-            'menuH1': pygame.font.SysFont('freesans', menuH1FontSize),
-            'playStateTitle' :  pygame.font.SysFont('freesans', playStateTitleFontSize),
-            'inCharFont' :  pygame.font.SysFont('freesans', inCharFontSize),
+            'menuH1': pygame.ftfont.SysFont('freesans', menuH1FontSize),
+            'playStateTitle' :  pygame.ftfont.SysFont('freesans', playStateTitleFontSize),
+            'inCharFont' :  pygame.ftfont.SysFont('freesans', inCharFontSize),
             })
         self.errCharSurface = pygame.transform.rotate(self.fonts.inCharFont.render("Err", True, self.colours.black), 90)
         self._circlecache = {}
@@ -64,7 +64,7 @@ class Theme(object):
     def fontSysSizeOptimize(self, text, width, fontname):
         fontsize = -1
         while True:
-            fontCandidate = pygame.font.SysFont(fontname, fontsize+1)
+            fontCandidate = pygame.ftfont.SysFont(fontname, fontsize+1)
             fontwidth = fontCandidate.size(text)[0]
             del(fontCandidate)
             if(fontwidth > width):
@@ -77,7 +77,7 @@ class Theme(object):
     def fontSysSizeOptimizeHeight(self, height, fontname):
         fontsize = -1
         while True:
-            fontCandidate = pygame.font.SysFont(fontname, fontsize+1)
+            fontCandidate = pygame.ftfont.SysFont(fontname, fontsize+1)
             fontheight = fontCandidate.get_linesize()
             del(fontCandidate)
             if(fontheight > height):
@@ -576,7 +576,7 @@ class player(object):
         pygame.init()
         self.theme = Theme(pydispmanx.getDisplaySize())
         self.playbackState = rydeplayer.states.playback.StateDisplay(self.theme)
-        print(pygame.font.get_fonts())
+        print(pygame.ftfont.get_fonts())
 
         # load config
         self.config = rydeConfig(self.theme)
