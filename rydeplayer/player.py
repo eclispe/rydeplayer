@@ -31,7 +31,7 @@ import rydeplayer.osd.modules
 
 # container for the theme
 class Theme(object):
-    def __init__(self, displaySize):
+    def __init__(self, displaySize, ftfont=False):
         self.colours = type('colours', (object,), {
             'transparent': (0,0,0,0),
             'transpBack': (0,0,0,51),
@@ -43,6 +43,10 @@ class Theme(object):
             'backgroundSubMenu': (57,169,251,255),
             'backgroundPlayState': (255,0,0,255),
             })
+        if ftfont:
+            self.fontLib = pygame.ftfont
+        else:
+            self.fontLib = pygame.font
         self.displayWidth = int(displaySize[0])
         self.displayHeight = int(displaySize[1])
         self.menuWidth = int(self.displayWidth/4)
@@ -51,9 +55,9 @@ class Theme(object):
         menuH1FontSize=self.fontSysSizeOptimize('BATC Ryde Project', self.menuWidth*0.85, 'freesans')
         inCharFontSize=self.fontSysSizeOptimize('Err', menuH1FontSize-(self.menuWidth*0.01), 'freesans')
         self.fonts = type('fonts', (object,), {
-            'menuH1': pygame.ftfont.SysFont('freesans', menuH1FontSize),
-            'playStateTitle' :  pygame.ftfont.SysFont('freesans', playStateTitleFontSize),
-            'inCharFont' :  pygame.ftfont.SysFont('freesans', inCharFontSize),
+            'menuH1': self.fontLib.SysFont('freesans', menuH1FontSize),
+            'playStateTitle' :  self.fontLib.SysFont('freesans', playStateTitleFontSize),
+            'inCharFont' :  self.fontLib.SysFont('freesans', inCharFontSize),
             })
         self.errCharSurface = pygame.transform.rotate(self.fonts.inCharFont.render("Err", True, self.colours.black), 90)
         self._circlecache = {}
@@ -64,7 +68,7 @@ class Theme(object):
     def fontSysSizeOptimize(self, text, width, fontname):
         fontsize = -1
         while True:
-            fontCandidate = pygame.ftfont.SysFont(fontname, fontsize+1)
+            fontCandidate = self.fontLib.SysFont(fontname, fontsize+1)
             fontwidth = fontCandidate.size(text)[0]
             del(fontCandidate)
             if(fontwidth > width):
@@ -77,7 +81,7 @@ class Theme(object):
     def fontSysSizeOptimizeHeight(self, height, fontname):
         fontsize = -1
         while True:
-            fontCandidate = pygame.ftfont.SysFont(fontname, fontsize+1)
+            fontCandidate = self.fontLib.SysFont(fontname, fontsize+1)
             fontheight = fontCandidate.get_linesize()
             del(fontCandidate)
             if(fontheight > height):
@@ -367,6 +371,7 @@ class rydeConfig(object):
             'enableMenu': False,
             'autoplay': True,
             'disableHardwareCodec': True,
+            'useFTfont': False,
             })
         self.configRev = 3
     #setter for default values
@@ -542,6 +547,12 @@ class rydeConfig(object):
                         else:
                             print("Invalid debug hardware codec config, skipping")
                             perfectConfig = False
+                    if 'useFTfont' in config['debug']:
+                        if isinstance(config['debug']['useFTfont'], bool):
+                            self.debug.useFTfont = config['debug']['useFTfont']
+                        else:
+                            print("Invalid debug font library config, skipping")
+                            perfectConfig = False
                 else:
                     print("Invalid debug config, skipping")
                     perfectConfig = False
@@ -570,6 +581,7 @@ class player(object):
         self.config = rydeConfig()
         if configFile != None:
             self.config.loadFile(configFile)
+
         # Autodetect output display
         if(len(pydispmanx.getDisplays())<1):
             raise RuntimeError('No displays detected')
@@ -578,7 +590,7 @@ class player(object):
 
         # setup ui core
         pygame.init()
-        self.theme = Theme(pydispmanx.getDisplaySize())
+        self.theme = Theme(pydispmanx.getDisplaySize(), self.config.debug.useFTfont)
         self.playbackState = rydeplayer.states.playback.StateDisplay(self.theme)
 
         print(self.config.tuner)

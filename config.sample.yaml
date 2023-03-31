@@ -56,7 +56,7 @@ presets:
           - 500
         band: *bandlnblow
 
-    70cm CT: &bandnonect
+    70cm CT:
         freq: 437000
         bw:   333
         band: *bandnonect
@@ -140,3 +140,4 @@ debug:
     enableMenu: False
     autoplay: True
     disableHardwareCodec: True
+    useFTfont: False

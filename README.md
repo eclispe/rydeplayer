@@ -12,12 +12,14 @@ Install packaged dependencies:
 
 Install pyDispmanx driver from https://github.com/eclispe/pyDispmanx and ensure the .so file is in your PYTHONPATH
 
-Install Longmynd. Currently recommending that you use this fork as it has fixes that have not been merged upstream yet: https://github.com/eclispe/longmynd
+Install Longmynd. Currently recommending that the BATC fork is used: https://github.com/BritishAmateurTelevisionClub/longmynd
+
+Install CombiTunerExpress. CombiTunerExpress is proprietary and only available as a binary.
 
 ## Config Files
 A complete sample YAML config file is provided as `config.sample.yaml`, this contains all currently configurable options. If some options are omitted from the config file then internal defaults will be used.
 ### Config file options
-* ```configRev``` The config format revision of this file, if present but wrong the file will not load, if missing file will load with warning. Current revision is 2
+* ```configRev``` The config format revision of this file, if present but wrong the file will not load, if missing file will load with warning. Current revision is 3
 * ```sources``` This section contains the source specific confgs
   * ```LONGMYND``` This section defines the paths and other settings for your Longmynd installation
     * ```binpath``` path to the Longmynd binary.
@@ -101,6 +103,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * ```enableMenu``` Enable the debug menu entry
   * ```autoplay``` Auto play the stream on lock, should be set to True.
   * ```disableHardwareCodec``` Disable hardware decoder in VLC, recommend setting to True, uses more CPU but is more reliable at decoding.
+  * ```useFTfont``` Use freetype font rendering adapter, supports emoji better but may cause memory leak so not recommended.
 
 ### Handset Configuration
 To configure a handset you need to add the handset configuration file to the handset library directory and add the filename (without the `.yaml` extension) to the main config file. Currently you also need to activate the driver listed in the handset file manually using the instructions in the Manual driver activation section.
