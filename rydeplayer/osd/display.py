@@ -57,15 +57,20 @@ class Group(object):
 
     # Set the layout details of this group
     def setModules(self, modules):
-        self.modules = modules
+        newmodules = {}
+        for moduleName, module in modules.items():
+            if module is None:
+                newmodules[moduleName]=None
+            else:
+                newmodules[moduleName]=self.theme.relativeRect(*module)
+        self.modules = newmodules
 
     def getEnabledModules(self):
         return self.modules.keys()
 
 # Store and parse OSD config
 class Config(object):
-    def __init__(self, theme):
-        self.theme = theme
+    def __init__(self):
         self.activeGroup={AvailableModules.MUTE:None, AvailableModules.SIGLEVEL:None, AvailableModules.PROGRAM:None}
         self.inactiveGroup={AvailableModules.MUTE:None}
         self.timers={TimerLength.PROGRAMTRIGGER: 5, TimerLength.USERTRIGGER: 5}
@@ -174,7 +179,7 @@ class Config(object):
                         if self._checkScaleRange(config, 'y', str(config['datum']).upper() in ["TR", "TC", "TR", "BR", "BC", "BL"]):
                             if self._checkScaleRange(config, 'w', True):
                                 if self._checkScaleRange(config, 'h', True):
-                                    outRect = self.theme.relativeRect(rydeplayer.common.datumCornerEnum.__members__[str(config['datum']).upper()], config['x'], config['y'], config['w'], config['h'])
+                                    outRect = (rydeplayer.common.datumCornerEnum.__members__[str(config['datum']).upper()], config['x'], config['y'], config['w'], config['h'])
                                 else:
                                     print("Invalid or missing height value, using defaults")
                             else:

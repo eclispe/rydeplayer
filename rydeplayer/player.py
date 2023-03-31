@@ -342,7 +342,7 @@ class Home(rydeplayer.states.gui.States):
             self.done = True
 
 class rydeConfig(object):
-    def __init__(self, theme):
+    def __init__(self):
         self.ir = ir.irConfig()
         self.gpio = rydeplayer.gpio.gpioConfig()
         self.tuner = rydeplayer.sources.common.tunerConfig()
@@ -354,7 +354,7 @@ class rydeConfig(object):
         defaultBand = self.tuner.getBand()
         self.bands[defaultBand] = "None"
         self.presets = {}
-        self.osd = rydeplayer.osd.display.Config(theme)
+        self.osd = rydeplayer.osd.display.Config()
         self.network = rydeplayer.network.networkConfig()
         self.sourceWatchdog = rydeplayer.watchdog.sourceWatchdogConfig()
         self.shutdownBehavior = rydeplayer.common.shutdownBehavior.APPSTOP
@@ -566,6 +566,10 @@ class rydeConfig(object):
 class player(object):
 
     def __init__(self, configFile = None):
+        # load config
+        self.config = rydeConfig()
+        if configFile != None:
+            self.config.loadFile(configFile)
         # Autodetect output display
         if(len(pydispmanx.getDisplays())<1):
             raise RuntimeError('No displays detected')
@@ -576,12 +580,7 @@ class player(object):
         pygame.init()
         self.theme = Theme(pydispmanx.getDisplaySize())
         self.playbackState = rydeplayer.states.playback.StateDisplay(self.theme)
-        print(pygame.ftfont.get_fonts())
 
-        # load config
-        self.config = rydeConfig(self.theme)
-        if configFile != None:
-            self.config.loadFile(configFile)
         print(self.config.tuner)
 
         # mute
