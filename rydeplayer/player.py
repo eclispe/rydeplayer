@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import pygame, pygame.ftfont, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys, socket
+import pygame, pygame.ftfont, vlc, select, pydispmanx, yaml, os, pkg_resources, argparse, importlib, functools, sys, socket, hashlib, base64
 import rydeplayer.sources.common
 import rydeplayer.sources.longmynd
 import rydeplayer.sources.combituner
@@ -347,6 +347,7 @@ class Home(rydeplayer.states.gui.States):
 
 class rydeConfig(object):
     def __init__(self):
+        self.playerID = None
         self.ir = ir.irConfig()
         self.gpio = rydeplayer.gpio.gpioConfig()
         self.tuner = rydeplayer.sources.common.tunerConfig()
@@ -477,6 +478,13 @@ class rydeConfig(object):
             # pass the source watchdog config to be parsed by the source watchdog config container
             if 'watchdog' in config:
                 perfectConfig = perfectConfig and self.sourceWatchdog.loadConfig(config['watchdog'])
+            # parse ryde id string
+            if 'playerID' in config:
+                if isinstance(config['playerID'], str):
+                    self.playerID = config['playerID']
+                else:
+                    print("Player ID invalid, skipping")
+                    perfectConfig = False
             # parse shutdown default shutdown event behavior
             if 'shutdownBehavior' in config:
                 if isinstance(config['shutdownBehavior'], str):
@@ -582,6 +590,29 @@ class player(object):
         if configFile != None:
             self.config.loadFile(configFile)
 
+        if(self.config.playerID is not None):
+            self.playerID = self.config.playerID
+        else:
+            # autogenerate player IDss
+            # Extract serial from cpuinfo file
+            piId = None
+            try:
+                f = open('/proc/cpuinfo','r')
+                for line in f:
+                    if line[0:6]=='Serial':
+                        hashed = hashlib.blake2b(digest_size=6)
+                        hashed.update(bytes.fromhex(line[10:26]))
+                        piId = base64.b64encode(hashed.digest()).decode('ascii')
+                f.close()
+            except:
+                piId = None
+            if piId is not None:
+                self.playerID = "Ryde "+piId
+            else:
+                print("Player auto ID failed")
+                self.playerID = "AUTO ID FAILED"
+        print(f'Player ID: {self.playerID}')
+
         # Autodetect output display
         if(len(pydispmanx.getDisplays())<1):
             raise RuntimeError('No displays detected')
@@ -653,6 +684,9 @@ class player(object):
                 if quit:
                     break
         self.shutdown(self.app.shutdownState)
+
+    def getPlayerID(self):
+        return self.playerID
 
     def addMuteCallback(self, callback):
         self.muteCallbacks.append(callback)

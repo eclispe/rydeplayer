@@ -1,5 +1,6 @@
 ---
 configRev: 3
+playerID: "TEST CONFIG"
 sources:
     LONGMYND:
         binpath: /home/pi/longmynd/longmynd
@@ -104,6 +105,7 @@ osd:
         USERTRIGGER: 10
         PROGRAMTRIGGER: 10
     active:
+        PLAYERID: null
         MUTE:
             datum: TR
             x: 0.03
@@ -118,6 +120,7 @@ osd:
         FREQ: null
         BW: null
     inactive:
+        PLAYERID: null
         MUTE: null
 
 network:

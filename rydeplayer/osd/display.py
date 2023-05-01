@@ -20,6 +20,7 @@ import enum, queue, socket, threading
 
 # Enum containing a list of all possible modules
 class AvailableModules(enum.Enum):
+    PLAYERID = enum.auto()
     MUTE = enum.auto()
     VOLUME = enum.auto()
     SIGLEVEL = enum.auto()
@@ -212,6 +213,7 @@ class Controller(object):
         self.surface = pygame.image.frombuffer(self.dispmanxlayer, self.dispmanxlayer.size, 'RGBA')
         # Initialise modules
         self.modules = dict()
+        self.modules[AvailableModules.PLAYERID]=rydeplayer.osd.modules.textDisplay(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TL, 0.03, 0.03, 0.25, 0.04), self.player.getPlayerID())
         self.modules[AvailableModules.MUTE]=rydeplayer.osd.modules.mute(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.03, 0.03, 0.1, 0.1), self.player.getMute())
         self.player.addMuteCallback(self.modules[AvailableModules.MUTE].updateVal)
         self.modules[AvailableModules.VOLUME]=rydeplayer.osd.modules.volume(self.theme, self.draw, theme.relativeRect(rydeplayer.common.datumCornerEnum.TR, 0.25, 0.03, 0.2, 0.15), self.player.getVolume())

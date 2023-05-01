@@ -311,6 +311,45 @@ class program(generic):
         super().redraw(rects, deferRedraw)
 
 # module that displays the a numeric value with units
+class textDisplay(generic):
+    def __init__ (self, theme, drawCallback, rect, initialValue):
+        super().__init__(theme, drawCallback, rect)
+        self.rect = rect.copy()
+        self.renderedbox = None
+        self.value = initialValue
+        self.dynamicTextRect = None
+
+    def updateVal(self, newval):
+        if newvalue is not None:
+            if newvalue != self.value:
+                self.value = newvalue
+                self.redraw()
+        else:
+            self.value = None
+            self.redraw()
+
+    def redraw(self, rects = None, deferRedraw = False):
+        # if the layout needs recalcuating because its new, moved or changed size
+        if self.renderedbox is None or self.renderedbox != self.rect:
+            self.surface.fill(self.theme.colours.transparent)
+            dynamicfontsize = self.theme.fontSysSizeOptimizeHeight(self.rect.height, 'freesans')
+            self.dynamicfont = self.theme.fontLib.SysFont('freesans', dynamicfontsize) # font for value to be displayed
+            self.renderedbox = self.rect.copy()
+        # render a blank if it is not set
+        if self.value is None :
+            valuestr = ""
+        else:
+            valuestr = str(self.value)
+        if self.dynamicTextRect is not None :
+            self.surface.fill(self.theme.colours.transparent, self.dynamicTextRect)
+        dynamicTextSurface = self.theme.outlineFontRender(valuestr, self.dynamicfont, self.theme.colours.white, self.theme.colours.black, 1)
+        self.dynamicTextRect = dynamicTextSurface.get_rect()
+        self.dynamicTextRect.centery = self.rect.height/2
+        self.dynamicTextRect.left = 0;
+        self.surface.blit(dynamicTextSurface, self.dynamicTextRect)
+        super().redraw(rects, deferRedraw)
+
+# module that displays the a numeric value with units
 class numericDisplay(generic):
     def __init__ (self, theme, drawCallback, rect):
         super().__init__(theme, drawCallback, rect)
