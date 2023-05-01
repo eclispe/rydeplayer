@@ -316,6 +316,7 @@ class tunerStatus(rydeplayer.sources.common.sourceStatus):
             27:rydeplayer.sources.common.CodecEnum.H264,
             32:rydeplayer.sources.common.CodecEnum.MPA,
             36:rydeplayer.sources.common.CodecEnum.H265,
+            51:rydeplayer.sources.common.CodecEnum.H266,
             129:rydeplayer.sources.common.CodecEnum.AC3,
             }
         newPIDs = {}

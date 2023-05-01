@@ -78,6 +78,7 @@ class CodecEnum(enum.Enum):
     H264 = (enum.auto(), "H.264")
     MPA  = (enum.auto(), "MPA")
     H265 = (enum.auto(), "H.265")
+    H266 = (enum.auto(), "H.266")
     AC3  = (enum.auto(), "AC3")
 
     def __init__(self, enum, longName):
