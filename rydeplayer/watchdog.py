@@ -14,7 +14,7 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import threading, time, socket
+import threading, time, socket, os
 
 class sourceWatchdogConfig(object):
     def __init__(self):
@@ -95,6 +95,73 @@ class sourceWatchdogConfig(object):
             perfectConfig = False
         return perfectConfig
 
+class watchdogServiceConfig(object):
+    def __init__(self):
+        self.serivceInterval = 1
+        self.pidPath = "/tmp/rydePlayer.pid"
+        self.enabled = True
+
+    # parse a dict containing the watchdog servicing config
+    def loadConfig(self, config):
+        perfectConfig = True
+        if isinstance(config, dict):
+            self.enabled = True
+            if 'serviceInterval' in config:
+                if isinstance(config['serviceInterval'], int):
+                    if float(config['serviceInterval']) > 0:
+                        self.serviceInterval = float(config['serviceInterval'])
+                    else:
+                        print("Watchdog service interval must be greater than 0, skipping")
+                        perfectConfig = False
+                elif isinstance(config['serviceInterval'], float):
+                    if config['serviceInterval'] > 0:
+                        self.serviceInterval = config['serviceInterval']
+                    else:
+                        print("Watchdog service interval must be greater than 0, skipping")
+                        perfectConfig = False
+                else:
+                    print("Invalid watchdog service interval, skipping")
+                    perfectConfig = False
+            else:
+                print("No watchdog service interval, skipping")
+                perfectConfig = False
+            if 'pidPath' in config:
+                if isinstance(config['pidPath'], str):
+                    pidDir, pidFile = os.path.split(config['pidPath'])
+                    if os.path.isdir(pidDir):
+                        if os.access(pidDir, os.W_OK):
+                            if pidFile == "":
+                                pidFile = "rydePlayer.pid"
+                                print("Watchdog PID path is a directory, using rydePlayer.pid as filename")
+                            pidPath = os.path.join(pidDir, pidFile)
+                            if os.path.exists(pidPath):
+                                if os.access(pidPath, os.W_OK):
+                                    print("Warning: Watchdog file already exists, file will be reused")
+                                    self.pidPath = pidPath;
+                                else:
+                                    print("Watchdog file directory already exists but is not writable, skipping")
+                                    perfectConfig = False
+                            else:
+                                self.pidPath = pidPath;
+                        else:
+                            print("Watchdog file directory is not writable, skipping")
+                            perfectConfig = False
+                    else:
+                        print("Watchdog file directory does not exist, skipping")
+                        perfectConfig = False
+                else:
+                    print("Invalid watchdog PID path, skipping")
+                    perfectConfig = False
+            else:
+                print("No watchdog PID path, skipping")
+                perfectConfig = False
+        elif config is None:
+            self.enabled = False
+        else:
+            print("Service interval config invalid, ignoring")
+            perfectConfig = False
+        return perfectConfig
+
 class sourceWatchdog(object):
     def __init__(self, config, action = None):
         self.config = config
@@ -150,3 +217,58 @@ class sourceWatchdog(object):
             self.timer = threading.Timer(self.delay, self._timerExpireThread)
             print("Watchdog Starting: "+str(self.delay))
             self.timer.start()
+
+class watchdogService(object):
+    def __init__(self, config, pid = None):
+        self.config = config
+        if config.enabled:
+            try:
+                with open(config.pidPath, 'w') as pidFile:
+                    pidFile.write(str(pid))
+            except IOError as e:
+                print(e)
+            print(config.pidPath)
+            self.recvSock, self.sendSock = socket.socketpair()
+            self.timer = None
+            self.lastService = None
+            self.service()
+
+    def getFDs(self):
+        if self.config.enabled:
+            return [self.recvSock]
+        else:
+            return []
+
+    def service(self):
+        if self.config.enabled:
+            if self.lastService is None or(time.monotonic() - self.lastService) > (self.config.serviceInterval*0.75):
+                self.lastService = time.monotonic()
+                try:
+                    os.utime(self.config.pidPath)
+                except IOError as e:
+                    print(e)
+                if self.timer is not None:
+                    self.timer.cancel()
+                self.timer = threading.Timer(self.config.serviceInterval, self._timerExpireThread)
+                self.timer.start()
+
+    def handleFD(self,fd):
+        if fd == self.recvSock:
+            self.recvSock.recv(1)
+            if self.config.enabled:
+                self.service()
+            else:
+                self.timer = None
+
+    def _timerExpireThread(self):
+        self.sendSock.send(b'\00')
+
+    def stop(self):
+        if self.config.enabled:
+            if self.timer is not None:
+                self.timer.cancel()
+                self.timer = None
+            try:
+                os.remove(self.config.pidPath)
+            except IOError as e:
+                print(e)

@@ -362,6 +362,7 @@ class rydeConfig(object):
         self.osd = rydeplayer.osd.display.Config()
         self.network = rydeplayer.network.networkConfig()
         self.sourceWatchdog = rydeplayer.watchdog.sourceWatchdogConfig()
+        self.watchdogService = rydeplayer.watchdog.watchdogServiceConfig()
         self.shutdownBehavior = rydeplayer.common.shutdownBehavior.APPSTOP
         self.audio = type('audioConfig', (object,), {
             'muteOnStartup': False,
@@ -478,6 +479,9 @@ class rydeConfig(object):
             # pass the source watchdog config to be parsed by the source watchdog config container
             if 'watchdog' in config:
                 perfectConfig = perfectConfig and self.sourceWatchdog.loadConfig(config['watchdog'])
+            # pass the watchdog serviceing config to be parsed by the watchdog servicing config container
+            if 'watchdogService' in config:
+                perfectConfig = perfectConfig and self.watchdogService.loadConfig(config['watchdogService'])
             # parse ryde id string
             if 'playerID' in config:
                 if isinstance(config['playerID'], str):
@@ -590,6 +594,9 @@ class player(object):
         if configFile != None:
             self.config.loadFile(configFile)
 
+        # setup watchdog serviceing
+        self.watchdogService = rydeplayer.watchdog.watchdogService(self.config.watchdogService, os.getpid())
+
         if(self.config.playerID is not None):
             self.playerID = self.config.playerID
         else:
@@ -676,7 +683,7 @@ class player(object):
         # main event loop
         while not quit:
             # need to regen every loop, lm stdout handler changes on lm restart
-            fds = self.irMan.getFDs() + self.sourceMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs() + self.watchdog.getFDs() + [self.recvVLCEvent]
+            fds = self.irMan.getFDs() + self.sourceMan.getFDs() + self.gpioMan.getFDs() + self.osd.getFDs() + self.netMan.getFDs() + self.watchdog.getFDs() + self.watchdogService.getFDs() + [self.recvVLCEvent]
             r, w, x = select.select(fds, [], [])
             for fd in r:
                 quit = self.handleEvent(fd)
@@ -762,6 +769,7 @@ class player(object):
         del(self.osd)
         del(self.playbackState)
         self.sourceMan.shutdown()
+        self.watchdogService.stop()
         if behaviour is rydeplayer.common.shutdownBehavior.APPREST:
             os.execv(sys.executable, ['python3', '-m', 'rydeplayer'] + sys.argv[1:])
         elif behaviour is rydeplayer.common.shutdownBehavior.SYSSTOP:
@@ -784,6 +792,8 @@ class player(object):
             quit = self.netMan.handleFD(fd)
         elif(fd in self.watchdog.getFDs()):
             self.watchdog.handleFD(fd)
+        elif(fd in self.watchdogService.getFDs()):
+            self.watchdogService.handleFD(fd)
         elif(fd == self.recvVLCEvent):
             self.vlcStopOnEndMain()
         return quit
@@ -792,6 +802,7 @@ class player(object):
         # update playback state
         state = self.sourceMan.getCoreState()
         vlcState = self.vlcPlayer.get_state()
+        self.watchdogService.service()
         if state.isRunning:
             self.watchdog.service()
             if state.isLocked:
