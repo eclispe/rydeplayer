@@ -795,8 +795,8 @@ class MultipleNumberSelect(SubMenuGeneric):
             prevState = None
             # setup edit buttons
             for thisVal in self.valueConfig:
-                menuHeadingKey = (thisVal, 'menu')
-                menuItemKey = (thisVal, 'item')
+                menuHeadingKey = (valueCounter, 'menu')
+                menuItemKey = (valueCounter, 'item')
                 if self.state_name is None:
                     self.state_name = menuHeadingKey
                     prevState = menuHeadingKey
