@@ -234,6 +234,7 @@ class guiState(rydeplayer.states.gui.SuperStates):
                 mainMenuStates[key] = rydeplayer.states.gui.MenuItem(self.theme, tunerConfigVars[key].getLongName(), lastkey, firstkey, key+'-sel', tunerConfigVars[key])
                 mainMenuStates[lastkey].down = key
                 mainMenuStates[firstkey].up = key
+                mainMenuStates[key+"-sel"].setParentLabel(mainMenuStates[key])
                 lastkey = key
                 # callback to menu header for validity updates
                 validCallFunc = functools.partial(superMenu.redrawState, mainMenuStates[key], mainMenuStates[key].getSurfaceRects())
@@ -258,6 +259,9 @@ class guiState(rydeplayer.states.gui.SuperStates):
         mainMenuStates[lastkey].down = 'band'
         mainMenuStates[firstkey].up = 'power'
         lastkey = 'power'
+        mainMenuStates["band-sel"].setParentLabel(mainMenuStates['band'])
+        mainMenuStates["preset-sel"].setParentLabel(mainMenuStates['preset'])
+        mainMenuStates["power-sel"].setParentLabel(mainMenuStates['power'])
         
         # add debug menu if enabled in config
         if config.debug.enableMenu:
@@ -279,6 +283,7 @@ class guiState(rydeplayer.states.gui.SuperStates):
             mainMenuStates[lastkey].down = 'debug'
             mainMenuStates[firstkey].up = 'debug'
             lastkey = 'debug'
+            mainMenuStates["debug-sel"].setParentLabel(mainMenuStates['debug'])
         validCallFunc = superMenu.refreshStates
         config.tuner.addVarChangeCallbackFunction(validCallFunc)
         activeCallbacks.add(functools.partial(config.tuner.removeVarChangeCallbackFunction,validCallFunc))

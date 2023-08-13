@@ -69,6 +69,9 @@ class StatesSurface(States):
 
 # SuperState with surface support
 class SuperStatesSurface(SuperStates, StatesSurface):
+    def __init__(self, theme):
+        super().__init__(theme)
+        self.parentLabel = None
     def redrawState(self, state, rects):
         for rect in rects:
             self.surface.fill(self.theme.colours.backgroundSubMenu, rect)
@@ -82,6 +85,31 @@ class SuperStatesSurface(SuperStates, StatesSurface):
             self.redrawState(oldstate, oldrects)
         if isinstance(self.state, StatesSurface):
             self.redrawState(self.state, self.state.getSurfaceRects())
+    def setParentLabel(self, label):
+        self.parentLabel = label
+    def getParentLabel(self):
+        return self.parentLabel
+    def cleanup(self):
+        if self.parentLabel is not None:
+            if isinstance(self.parentLabel, (MenuItem, SubMenuItem)):
+                self.parentLabel.setHighlight(False)
+        super().cleanup()
+    def startup(self):
+        if self.parentLabel is not None:
+            if isinstance(self.parentLabel, (MenuItem, SubMenuItem)):
+                self.parentLabel.setHighlight(True)
+    def setStateStack(self, stateStack):
+        oldLabel = None
+        if isinstance(self.state, SuperStatesSurface):
+            oldLabel = self.state.getParentLabel()
+        super().setStateStack(stateStack)
+        if oldLabel is not None and oldLabel is not self.state:
+            if not isinstance(self.state, SuperStatesSurface) or self.state.getParentLabel() is not oldLabel:
+                self.redrawState(oldLabel, oldLabel.getSurfaceRects())
+        if isinstance(self.state, SuperStatesSurface):
+            parentLabel = self.state.getParentLabel()
+            if parentLabel is not None:
+                self.redrawState(parentLabel, parentLabel.getSurfaceRects())
 
 # Basic menu item that draws and navigates but nothing else
 class MenuItem(StatesSurface):
@@ -89,6 +117,7 @@ class MenuItem(StatesSurface):
         super().__init__(theme)
         self.next = None
         self.done = False
+        self.highlighted = False;
         self.label = label
         self.validTrack = validTrack
         boxheight = self.theme.fonts.menuH1.size(label)[1]
@@ -119,15 +148,20 @@ class MenuItem(StatesSurface):
     def redrawText(self):
         self.textSurface = self.drawText(self.label)
         self.redraw()
+    def setHighlight(self, highlight):
+        if self.highlighted != highlight:
+            self.highlighted = highlight
+            if highlight:
+                # repaint with transparent background
+                self.backColour = self.theme.colours.transpBack
+            else:
+                # repaint with highlighted background
+                self.backColour = self.theme.colours.transparent
+            self.redraw()
     def cleanup(self):
-        # repaint with transparent background
-        self.backColour = self.theme.colours.transparent
-        self.redraw()
+        self.setHighlight(False)
     def startup(self):
-        # repaint with highlighted background
-        self.backColour = self.theme.colours.transpBack
-        self.redraw()
-
+        self.setHighlight(True)
     def get_event(self, event):
         if( event == navEvent.UP):
             if(self.up != None):
@@ -152,6 +186,7 @@ class SubMenuItem(StatesSurface):
         super().__init__(theme)
         self.next = None
         self.done = False
+        self.highlighted = False;
         self.label = label
         self.validTrack = validTrack
         self.up = up
@@ -183,12 +218,20 @@ class SubMenuItem(StatesSurface):
     def redrawText(self):
         self.textSurface = self.drawText(self.label)
         self.redraw()
+    def setHighlight(self, highlight):
+        if self.highlighted != highlight:
+            self.highlighted = highlight
+            if highlight:
+                # repaint with transparent background
+                self.backColour = self.theme.colours.transpBack
+            else:
+                # repaint with highlighted background
+                self.backColour = self.theme.colours.transparent
+            self.redraw()
     def cleanup(self):
-        self.backColour = self.theme.colours.transparent
-        self.redraw()
+        self.setHighlight(False)
     def startup(self):
-        self.backColour = self.theme.colours.transpBack
-        self.redraw()
+        self.setHighlight(True)
     def get_event(self, event):
         if( event == navEvent.UP):
             if(self.up != None):
@@ -246,6 +289,7 @@ class SubMenuGeneric(SuperStatesSurface):
         return (drawnext, itemleft)
 
     def startup(self):
+        super().startup()
         (drawnext, itemleft) = self.buildStates()
         # align the menu items and sub items
         self.state = self.state_dict[self.state_name]
@@ -443,6 +487,7 @@ class ListSelect(SuperStatesSurface):
         super().cleanup()
         self.surface.fill(self.theme.colours.transparent)
     def startup(self, startValue = (False,None)):
+        super().startup()
         if startValue[0]:
             initialvalue = startValue[1]
         else:
@@ -609,6 +654,7 @@ class CharSeqSelect(SuperStatesSurface):
         self.state_name = '0'
         self.surface.fill(self.theme.colours.transparent)
     def startup(self):
+        super().startup()
         self.currentValue = self.valueConfig.getValue()
         self._updateValid(self.currentValue)
         # how big a box do we need
@@ -891,6 +937,7 @@ class Menu(SuperStatesSurface):
         self.dispmanxlayer = None
 
     def startup(self):
+        super().startup()
         self.state_dict, initstate, self.cleanupFunc=self.stateDictGenFunc(self)
         # open and connect the display
         self.dispmanxlayer = pydispmanx.dispmanxLayer(4)
