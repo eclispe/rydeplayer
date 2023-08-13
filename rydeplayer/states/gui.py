@@ -212,6 +212,7 @@ class SubMenuGeneric(SuperStatesSurface):
     def __init__(self, theme, backState, state_dict, initstate):
         super().__init__(theme)
         # where to go back to
+        self.back = backState
         self.next = backState
         self.top = 0
         self.left = 0
@@ -290,6 +291,7 @@ class SubMenuGeneric(SuperStatesSurface):
             return True
         else:
             if event == navEvent.BACK or event == navEvent.LEFT:
+                self.next = self.back
                 self.done = True
                 return True
             else:
@@ -401,6 +403,7 @@ class ListSelect(SuperStatesSurface):
     def __init__(self, theme, backState, items, currentValueFunction, updateCallback):
         super().__init__(theme)
         # where to go back to
+        self.back = backState
         self.next = backState
         # dictionary of key:displaytext pairs
         self.items = items
@@ -463,6 +466,7 @@ class ListSelect(SuperStatesSurface):
         if isinstance(self.state, ListSelectItem):
             self.surface.blit(self.state.get_surface(), self.state.surfacerect)
     def get_event(self, event):
+        self.next = self.back
         if(not self.state.get_event(event)):
             if(event == navEvent.BACK or event == navEvent.LEFT):
                 self.done = True
@@ -592,6 +596,7 @@ class CharSeqSelect(SuperStatesSurface):
         self.valueConfig = valueConfig
         # where to go back to
         self.suffix = ""
+        self.back = backState
         self.next = backState
         self.top = 0
         self.left = 0
@@ -648,6 +653,7 @@ class CharSeqSelect(SuperStatesSurface):
         self.state.startup()
         self.surface.blit(self.state.get_surface(), self.state.surfacerect)
     def get_event(self, event):
+        self.next = self.back
         handeled = self.state.get_event(event)
         newValue = self._getValue()
         self._updateValid(newValue)
@@ -830,14 +836,17 @@ class MultipleNumberSelect(SubMenuGeneric):
     def addValue(self, newValueConfig):
         self.valueConfig.append(newValueConfig.getValue())
         self.updateCallback()
+        self.next = self.back
         self.done = True
 
     def deleteValue(self, deleteIndex):
         del(self.valueConfig[deleteIndex])
         self.updateCallback()
+        self.next = self.back
         self.done = True
 
     def get_event(self, event):
+        self.next = self.back
         if self.state.get_event(event):
             # when exiting single mode also close this
             if self.state.done and self.valueConfig.single:
@@ -855,6 +864,7 @@ class MultipleNumberSelect(SubMenuGeneric):
 class Menu(SuperStatesSurface):
     def __init__(self, theme, nextstate, stateDictGenFunc):
         super().__init__(theme)
+        self.back = nextstate
         self.next = nextstate
         self.done = False
         self.stateDictGenFunc = stateDictGenFunc
@@ -923,6 +933,7 @@ class Menu(SuperStatesSurface):
                 self.surface.blit(menuState.get_surface(), menuState.surfacerect)
 
     def get_event(self, event):
+        self.next = self.back
         # Always handle this event
         if(event == navEvent.MENU):
             self.done = True
@@ -941,6 +952,7 @@ class Menu(SuperStatesSurface):
             self.surface.blits(state.getBlitPairs())
 
     def refreshStates(self, passedVar):
+        self.next = self.back
         # shutdown current state if there is no support to maintain its internal state, should end up at a supported state
         if not (isinstance(self.state, ListSelect) or isinstance(self.state, MenuItem)):
             self.state.done = True
