@@ -66,6 +66,10 @@ class StatesSurface(States):
         return [self.surfacerect]
     def getBlitPairs(self):
         return [(self.surface, self.surfacerect)]
+    def setRefPoint(self, horizontal, vertical):
+        self.surfacerect.top = vertical
+        self.surfacerect.left = horizontal
+        return (self.surfacerect.right, self.surfacerect.bottom)
 
 # SuperState with surface support
 class SuperStatesSurface(SuperStates, StatesSurface):
@@ -179,6 +183,10 @@ class MenuItem(StatesSurface):
                 self.done=True
                 return True
         return False
+    def setRefPoint(self, horizontal, vertical):
+        self.surfacerect.top = vertical
+        self.surfacerect.right = horizontal
+        return (self.surfacerect.left, self.surfacerect.bottom)
 
 # A basic menu item for submenus
 class SubMenuItem(StatesSurface):
@@ -298,12 +306,10 @@ class SubMenuGeneric(SuperStatesSurface):
                 menuState.top = drawnext+self.top
                 menuState.left = itemleft
             elif(isinstance(menuState, ListSelect)):
-                menuState.surfacerect.top = drawnext+self.top
-                menuState.surfacerect.left = itemleft
+                menuState.setRefPoint(itemleft, drawnext+self.top)
             elif(isinstance(menuState, SubMenuItem)):
-                menuState.surfacerect.top = drawnext
-                menuState.surfacerect.left = 0
-                drawnext = menuState.surfacerect.bottom + self.theme.menuHeight*0.01
+                surfaceHRef, surfaceVRef = menuState.setRefPoint(0, drawnext)
+                drawnext = surfaceVRef + self.theme.menuHeight*0.01
                 self.surface.blit(menuState.get_surface(), menuState.surfacerect)
         self.state.startup()
 
@@ -340,6 +346,11 @@ class SubMenuGeneric(SuperStatesSurface):
                 return True
             else:
                 return False
+
+    def setRefPoint(self, horizontal, vertical):
+        self.top = vertical
+        self.left = horizontal
+        return (None, None)
 
 # Simple menu item that executes a callback function when it is "selected"
 class MenuItemFunction(MenuItem):
@@ -502,9 +513,8 @@ class ListSelect(SuperStatesSurface):
         drawnext = self.theme.menuHeight*0.01
         for menuState in self.state_dict.values():
             if isinstance(menuState, ListSelectItem):
-                menuState.surfacerect.top = drawnext
-                menuState.surfacerect.left = 0
-                drawnext = menuState.surfacerect.bottom + self.theme.menuHeight*0.01
+                surfaceHRef, surfaceVRef = menuState.setRefPoint(0, drawnext)
+                drawnext = surfaceVRef+ self.theme.menuHeight*0.01
                 self.surface.blit(menuState.get_surface(), menuState.surfacerect)
         # start the default state
         self.state.startup()
@@ -722,6 +732,10 @@ class CharSeqSelect(SuperStatesSurface):
         else:
             return True
         return False
+    def setRefPoint(self, horizontal, vertical):
+        self.top = vertical
+        self.left = horizontal
+        return (None, None)
 
 # sub menu for inputing whole numbers and pass new value to callback when done
 class NumberSelect(CharSeqSelect):
@@ -965,18 +979,15 @@ class Menu(SuperStatesSurface):
         #TODO: auto sort so input dict isnt order sensitive
         for menuState in self.state_dict.values():
             if(isinstance(menuState, ListSelect)):
-                menuState.surfacerect.top = drawnext
-                menuState.surfacerect.left = self.theme.menuWidth
+                menuState.setRefPoint(self.theme.menuWidth, drawnext)
                 self.surface.blit(menuState.get_surface(), menuState.surfacerect)
             elif(isinstance(menuState, CharSeqSelect) or isinstance(menuState, SubMenuGeneric)):
-                menuState.top = drawnext
-                menuState.left = self.theme.menuWidth
+                menuState.setRefPoint(self.theme.menuWidth, drawnext)
                 print((drawnext, self.theme.menuWidth))
 #                self.surface.blit(menuState.get_surface(), menuState.surfacerect)
             elif(isinstance(menuState, MenuItem)):
-                menuState.surfacerect.top = drawnext
-                menuState.surfacerect.right = self.theme.menuWidth*0.9
-                drawnext = menuState.surfacerect.bottom + self.theme.menuHeight*0.01
+                surfaceHRef, surfaceVRef = menuState.setRefPoint(self.theme.menuWidth*0.9, drawnext)
+                drawnext = surfaceVRef + self.theme.menuHeight*0.01
                 self.surface.blit(menuState.get_surface(), menuState.surfacerect)
 
     def get_event(self, event):
