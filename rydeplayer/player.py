@@ -1,5 +1,5 @@
 #    Ryde Player provides a on screen interface and video player for Longmynd compatible tuners.
-#    Copyright © 2022 Tim Clark
+#    Copyright © 2023 Tim Clark
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ class Theme(object):
             'white': (255,255,255,255),
             'red': (255,0,0,255),
             'textError': (255,0,0,255),
+            'menuBlackInactive': (0,0,0,127),
             'backgroundMenu': (57,169,251,255),
             'backgroundSubMenu': (57,169,251,255),
             'backgroundPlayState': (255,0,0,255),
@@ -51,6 +52,7 @@ class Theme(object):
         self.displayHeight = int(displaySize[1])
         self.menuWidth = int(self.displayWidth/4)
         self.menuHeight = self.displayHeight
+        self.menuSpace = int(self.menuHeight*0.01)
         playStateTitleFontSize=self.fontSysSizeOptimize('Not Loaded', displaySize[0]/2, 'freesans')
         menuH1FontSize=self.fontSysSizeOptimize('BATC Ryde Project', self.menuWidth*0.85, 'freesans')
         inCharFontSize=self.fontSysSizeOptimize('Err', menuH1FontSize-(self.menuWidth*0.01), 'freesans')
