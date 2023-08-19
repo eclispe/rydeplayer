@@ -104,6 +104,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
   * ```muteOnStartup``` Set the default mute status to use when starting the player
   * ```volumeOnStartup``` Set the default volume level to use when starting the player in %
   * ```volumeStep``` Set the step size to use when adjusting the volume level in %
+  * ```enableMenu``` Enable a menu item to adjust mute and volume, designed for when dedicated buttons are unavailable.
 * ```debug``` Debug options, for advanced users, do not rely on these, they may go away without notice
   * ```enableMenu``` Enable the debug menu entry
   * ```autoplay``` Auto play the stream on lock, should be set to True.

@@ -142,6 +142,7 @@ audio:
     muteOnStartup: False
     volumeOnStartup: 100
     volumeStep: 25
+    enableMenu: False
 
 debug:
     enableMenu: False
