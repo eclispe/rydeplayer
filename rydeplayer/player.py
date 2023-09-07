@@ -335,12 +335,8 @@ class guiState(rydeplayer.states.gui.SuperStates):
                 self.player.toggleMute()
             elif(event == rydeplayer.common.navEvent.VOLU):
                 self.player.adjustVolumeByStep(True)
-                self.player.setMute(False)
-                self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
             elif(event == rydeplayer.common.navEvent.VOLD):
                 self.player.adjustVolumeByStep(False)
-                self.player.setMute(False)
-                self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
             elif(event == rydeplayer.common.navEvent.CHANU):
                 self.player.switchPresetRelative(-1)
             elif(event == rydeplayer.common.navEvent.CHAND):
@@ -770,6 +766,8 @@ class player(object):
             self.adjustVolume(self.config.audio.volumeStep)
         else:
             self.adjustVolume(-self.config.audio.volumeStep)
+        self.setMute(False)
+        self.osd.activate(3, rydeplayer.osd.display.TimerLength.USERTRIGGER)
 
     def getPresetName(self, preset):
         if preset in self.config.presets:
