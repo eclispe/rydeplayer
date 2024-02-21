@@ -95,6 +95,7 @@ A complete sample YAML config file is provided as `config.sample.yaml`, this con
 * ```watchdog``` This section contains the source watchdog configuration, it can be populated as below or set to ```null``` to disable the watchdog.
   * ```minRestartTime``` Initial time to wait after source unload before retrying, must be greater than 0 and not more than ```maxRestartTime```.
   * ```maxRestartTime``` Maximum time to wait after source unload before retrying, must be not less than ```minRestartTime```.
+  * ```startupDelay``` Time to wait before the first restart after watchdog startup, prevents false restarts during player startup.
   * ```backoffRate``` How much to multiply the wait time by for each failed restart, must be at least.
 * ```watchdogService``` This section contains the watchdog servicing configuration, it can be populated as below or set to ```null``` to disable servicing the watchdog
   * ```serviceInterval`` Time to wait between touching the watchdog PID file, must be greater than 0.

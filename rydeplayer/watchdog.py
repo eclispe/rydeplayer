@@ -20,6 +20,7 @@ class sourceWatchdogConfig(object):
     def __init__(self):
         self.minRestartTime = 0.1
         self.maxRestartTime = 300
+        self.startupDelay = 5
         self.backoffRate = 2
         self.enabled = True
 
@@ -69,6 +70,18 @@ class sourceWatchdogConfig(object):
                 print("Maximum restart time must be at least the minimum restart time, ignoring")
                 perfectConfig = False
 
+            if 'startupDelay' in config:
+                if isinstance(config['startupDelay'], int):
+                    self.startupDelay = float(config['startupDelay'])
+                elif isinstance(config['minRestartTime'], float):
+                    self.startupDelay = config['startupDelay']
+                else:
+                    print("Invalid startup delay time, skipping")
+                    perfectConfig = False
+            else:
+                print("No startup delay time, skipping")
+                perfectConfig = False
+
             if 'backoffRate' in config:
                 if isinstance(config['backoffRate'], int):
                     if float(config['backoffRate']) >= 1:
@@ -97,7 +110,7 @@ class sourceWatchdogConfig(object):
 
 class watchdogServiceConfig(object):
     def __init__(self):
-        self.serivceInterval = 1
+        self.serviceInterval = 1
         self.pidPath = "/tmp/rydePlayer.pid"
         self.enabled = True
 
@@ -165,6 +178,7 @@ class watchdogServiceConfig(object):
 class sourceWatchdog(object):
     def __init__(self, config, action = None):
         self.config = config
+        self.startup = time.monotonic()
         self.lastAutostart = None
         self.lastLoaded = None
         self.delay = None
@@ -209,9 +223,14 @@ class sourceWatchdog(object):
             self.lastLoaded = time.monotonic()
 
     def fault(self):
+        reftime = time.monotonic()
         if self.timer is None and self.config.enabled: # Watchdog not already waiting
-            if self.lastAutostart is None or self.delay is None or (self.lastLoaded is not None and self.lastLoaded > self.lastAutostart and (time.monotonic() - self.lastLoaded) > self.delay):
-                self.delay = self.config.minRestartTime
+            if self.lastAutostart is None or self.delay is None or (self.lastLoaded is not None and self.lastLoaded > self.lastAutostart and (reftime - self.lastLoaded) > self.delay):
+                if self.startup is not None and (reftime - self.startup) < self.config.startupDelay:
+                    self.delay = self.config.startupDelay
+                else:
+                    self.startup = None
+                    self.delay = self.config.minRestartTime
             else:
                 self.delay = min(self.delay*self.config.backoffRate, self.config.maxRestartTime)
             self.timer = threading.Timer(self.delay, self._timerExpireThread)

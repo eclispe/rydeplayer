@@ -130,6 +130,7 @@ network:
 watchdog:
     minRestartTime: 0.1
     maxRestartTime: 300
+    startupDelay: 5
     backoffRate: 2
 
 watchdogService:
