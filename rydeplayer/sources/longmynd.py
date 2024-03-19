@@ -20,6 +20,7 @@ import rydeplayer.sources.common
 import pyftdi.ftdi
 import pyftdi.usbtools
 import pyftdi.eeprom
+import usb.core
 
 class inPortEnum(enum.Enum):
     TOP = enum.auto()
@@ -740,20 +741,39 @@ class lmManager(object):
             signature = []
             for prop in sorted(list(eeprom.properties)+['product']):
                 signature.append((prop,getattr(eeprom, prop)))
-            devices[deviceDesc]=frozenset(signature)
+            devices[deviceDesc[0]]=frozenset(signature)
             eeprom.close()
             device.reset()
             pyftdi.usbtools.UsbTools.release_device(device)
         return devices
 
+    def _fetchPicoDevices(self):
+        foundDevices = list(usb.core.find(find_all=1))
+        devices = {}
+        for device in foundDevices:
+            signature = []
+            for prop in sorted(list(rydeplayer.sources.common.picoConfigs.getKeys())):
+                try:
+                    attr=getattr(device, prop)
+                except ValueError:
+                    attr=None
+                signature.append((prop,attr))
+            devices[device]=frozenset(signature)
+        return devices
+
     def start(self):
         if self.activeConfig.isValid():
             if self.process == None :
-                devices = self._fetchFtdiDevices()
-                validTuners = [rydeplayer.sources.common.ftdiConfigs.MINITIOUNER.configSet, rydeplayer.sources.common.ftdiConfigs.MINITIOUNEREXPRESS.configSet, rydeplayer.sources.common.ftdiConfigs.MINITIOUNER_S.configSet, rydeplayer.sources.common.ftdiConfigs.MINITIOUNER_PRO_TS1.configSet, rydeplayer.sources.common.ftdiConfigs.MINITIOUNER_PRO_TS2.configSet]
+                picoDevices = self._fetchPicoDevices()
+                ftdiDevices = self._fetchFtdiDevices()
+                devices = {}
+                devices.update(picoDevices)
+                devices.update(ftdiDevices)
+                ftdiValidTuners = [rydeplayer.sources.common.ftdiConfigs.MINITIOUNER.configSet, rydeplayer.sources.common.ftdiConfigs.MINITIOUNEREXPRESS.configSet, rydeplayer.sources.common.ftdiConfigs.MINITIOUNER_S.configSet, rydeplayer.sources.common.ftdiConfigs.MINITIOUNER_PRO_TS1.configSet, rydeplayer.sources.common.ftdiConfigs.MINITIOUNER_PRO_TS2.configSet]
+                picoValidTuners = [rydeplayer.sources.common.picoConfigs.PICOTUNER.configSet]
                 foundDevice = None
                 for device in devices:
-                    if devices[device] in validTuners:
+                    if (device in ftdiDevices and devices[device] in ftdiValidTuners) or (device in picoDevices and devices[device] in picoValidTuners):
                         foundDevice = device
                         break
                 if foundDevice is not None:
@@ -763,7 +783,7 @@ class lmManager(object):
                     self.autoresetdetect = False
                     self.statelog=[]
                     self.lmlog=[]
-                    args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename, '-r', str(self.tsTimeout), '-u', str(foundDevice[0].bus), str(foundDevice[0].address)]
+                    args = [self.lmpath, '-t', self.mediaFIFOfilename, '-s', self.statusFIFOfilename, '-r', str(self.tsTimeout), '-u', str(foundDevice.bus), str(foundDevice.address)]
                     if self.activeConfig.band.getInputPort() == inPortEnum.BOTTOM:
                         args.append('-w')
                     if self.activeConfig.band.getPolarity() == PolarityEnum.HORIZONTAL:

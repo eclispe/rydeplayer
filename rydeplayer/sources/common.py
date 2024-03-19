@@ -19,6 +19,7 @@ import rydeplayer.common
 import pyftdi.ftdi
 import pyftdi.usbtools
 import pyftdi.eeprom
+import usb.core
 
 class sourceModeEnum(enum.Enum):
     def __init__(self, enum, longName):
@@ -85,6 +86,35 @@ class CodecEnum(enum.Enum):
         self.longName = longName
     def __str__(self):
         return self.longName
+
+class picoConfigs(enum.Enum):
+    UNKNOWN    = (enum.auto(), frozenset(), False)
+    PICOTUNER = (enum.auto(), frozenset([
+        ('idVendor', 0x2e8a),
+        ('idProduct', 0xba2c),
+        ('bcdDevice', 0x102),
+        ('product','BATC PicoTuner'),
+        ('manufacturer','BATC')
+    ]), True)
+
+    def __init__(self, enum, configset, canIdentify):
+        self._configset = configset
+        self._canIdentify = canIdentify
+
+    @classmethod
+    def getKeys(cls):
+        keys=set()
+        for config in cls:
+            keys |= {x[0] for x in config.configSet}
+        return frozenset(keys)
+
+    @property
+    def configSet(self):
+        return self._configset
+
+    @property
+    def canIdentify(self):
+        return self._canIdentify
 
 class ftdiConfigs(enum.Enum):
     UNKNOWN = (enum.auto(), frozenset(), False)
